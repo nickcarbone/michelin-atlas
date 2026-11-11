@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Michelin Menu Atlas — pilot edition</title>
+<meta name="description" content="Fifteen Michelin-starred restaurants in fifteen countries, investigated through their menus. Pilot edition with three complete investigations.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..600&family=Familjen+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+:root{
+  --paper:#F2F3EE;
+  --sheet:#FBFBF8;
+  --ink:#1C2326;
+  --ink-soft:#4A5357;
+  --rule:#C9CCC2;
+  --soca:#1F5A54;      /* river green: structure, links */
+  --soca-deep:#123B37;
+  --turmeric:#C99413;  /* markers, stars, the one warm note */
+  --chilli:#9E2F26;    /* used only for corrections and warnings */
+  --serif:"Newsreader", Georgia, "Times New Roman", serif;
+  --sans:"Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --measure:40rem;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:4.5rem}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:1.125rem;line-height:1.62;font-optical-sizing:auto;-webkit-font-smoothing:antialiased}
+a{color:var(--soca);text-decoration-thickness:1px;text-underline-offset:.18em}
+a:hover{color:var(--soca-deep)}
+:focus-visible{outline:2px solid var(--turmeric);outline-offset:3px;border-radius:2px}
+p{margin:0 0 1em}
+h1,h2,h3,h4{font-weight:400;line-height:1.12;margin:0}
+.sans{font-family:var(--sans)}
+.wrap{max-width:74rem;margin:0 auto;padding:0 1.5rem}
+.measure{max-width:var(--measure)}
+.skip{position:absolute;left:-999px;top:0;background:var(--ink);color:#fff;padding:.5rem 1rem;z-index:2000}
+.skip:focus{left:1rem}
+
+/* masthead */
+.mast{position:sticky;top:0;z-index:1000;background:rgba(242,243,238,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--rule)}
+.mast .wrap{display:flex;align-items:center;gap:1.5rem;height:3.6rem}
+.mast .brand{font-family:var(--serif);font-size:1.15rem;color:var(--ink);text-decoration:none;white-space:nowrap}
+.mast nav{display:flex;gap:1.1rem;overflow-x:auto;font-family:var(--sans);font-size:.88rem;scrollbar-width:none}
+.mast nav::-webkit-scrollbar{display:none}
+.mast nav a{color:var(--ink-soft);text-decoration:none;white-space:nowrap;padding:.3rem 0}
+.mast nav a:hover,.mast nav a.on{color:var(--soca)}
+
+/* opening */
+.opening{padding:4.5rem 0 2.5rem}
+.opening h1{font-size:clamp(3rem,9vw,7.4rem);font-weight:300;letter-spacing:-.025em;line-height:.95;max-width:12ch}
+.opening .stand{font-size:clamp(1.2rem,2vw,1.45rem);line-height:1.5;color:var(--ink-soft);max-width:36rem;margin-top:1.6rem}
+.edition{font-family:var(--sans);font-size:.9rem;color:var(--ink-soft);margin-top:1.8rem;display:flex;flex-wrap:wrap;gap:.4rem 1.6rem;border-top:1px solid var(--rule);padding-top:.9rem;max-width:44rem}
+.edition b{font-weight:600;color:var(--ink)}
+
+/* map */
+.mapsec{background:var(--soca-deep);color:#E9EEE9;padding:0 0 1.2rem}
+.mapgrid{display:grid;grid-template-columns:1fr 19rem;min-height:34rem}
+#map{height:100%;min-height:34rem;background:#cfd6d2}
+#map .leaflet-tile-pane{filter:grayscale(1) contrast(.92) brightness(1.04)}
+.maplist{background:var(--soca-deep);padding:1.2rem 1.2rem 1rem;overflow:auto;max-height:34rem;font-family:var(--sans)}
+.maplist h2{font-family:var(--serif);font-size:1.5rem;color:#fff;margin-bottom:.3rem}
+.maplist p.note{font-size:.82rem;color:#B9C7C2;margin:0 0 .9rem}
+.maplist ol{list-style:none;margin:0;padding:0}
+.maplist li button{all:unset;cursor:pointer;display:grid;grid-template-columns:2rem 1fr auto;gap:.5rem;align-items:baseline;width:100%;padding:.42rem .2rem;border-bottom:1px solid rgba(255,255,255,.1);font-size:.9rem;color:#E9EEE9}
+.maplist li button:hover,.maplist li button:focus-visible{background:rgba(255,255,255,.06)}
+.maplist .n{font-variant-numeric:tabular-nums;color:var(--turmeric);font-weight:600}
+.maplist .c{color:#9FB1AB;font-size:.78rem}
+.legend{display:flex;flex-wrap:wrap;gap:.6rem 1.4rem;font-family:var(--sans);font-size:.82rem;color:#C9D4D0;padding-top:1rem}
+.legend span{display:inline-flex;align-items:center;gap:.45rem}
+.pin{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-family:var(--sans);font-weight:600;font-size:12px;line-height:1}
+.pin.done{background:var(--turmeric);color:var(--ink);border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.pin.soon{background:#fff;color:var(--soca-deep);border:2px solid var(--soca-deep)}
+.pin.bonus{background:#fff;color:var(--soca-deep);border:2px dashed var(--soca-deep);border-radius:4px}
+.legend .pin{width:18px;height:18px;font-size:0}
+.leaflet-popup-content-wrapper{border-radius:3px;font-family:var(--sans)}
+.leaflet-popup-content{margin:.9rem 1rem;font-size:.88rem;line-height:1.45;color:var(--ink)}
+.pop h3{font-family:var(--serif);font-size:1.25rem;margin:0 0 .15rem}
+.pop .meta{color:var(--ink-soft);margin-bottom:.4rem}
+.pop .stars{color:var(--turmeric);letter-spacing:.1em}
+.pop a{font-weight:600}
+
+/* sections */
+section.block{padding:4.5rem 0;border-top:1px solid var(--rule)}
+.sechead{display:grid;grid-template-columns:minmax(0,1fr);gap:.8rem;margin-bottom:2.2rem}
+.sechead h2{font-size:clamp(2rem,4.2vw,3.2rem);font-weight:300;letter-spacing:-.015em}
+.sechead p{color:var(--ink-soft);max-width:var(--measure);margin:0}
+
+/* tables */
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:.92rem}
+th{font-weight:600;text-align:left;color:var(--ink-soft);border-bottom:1px solid var(--ink);padding:.5rem .6rem .45rem 0;vertical-align:bottom}
+td{border-bottom:1px solid var(--rule);padding:.6rem .6rem .6rem 0;vertical-align:top}
+.tablewrap{overflow-x:auto}
+
+/* collection */
+.filters{display:flex;flex-wrap:wrap;gap:.7rem 1rem;align-items:end;font-family:var(--sans);font-size:.88rem;margin-bottom:1.4rem}
+.filters label{display:flex;flex-direction:column;gap:.25rem;color:var(--ink-soft)}
+.filters input,.filters select{font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--rule);border-radius:3px;padding:.45rem .6rem;min-width:11rem}
+.filters input{min-width:16rem}
+.filters button{font:inherit;background:none;border:0;color:var(--soca);text-decoration:underline;cursor:pointer;padding:.45rem 0}
+#count{margin-left:auto;color:var(--ink-soft)}
+.coll td.num{font-variant-numeric:tabular-nums;color:var(--turmeric);font-weight:600;width:2.6rem}
+.coll td.nm{font-family:var(--serif);font-size:1.12rem}
+.coll td.nm a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--rule)}
+.coll td.nm a:hover{border-color:var(--soca);color:var(--soca)}
+.st{color:var(--turmeric);white-space:nowrap}
+.tag{display:inline-block;font-size:.76rem;color:var(--ink-soft);border:1px solid var(--rule);border-radius:999px;padding:.05rem .5rem;margin:0 .25rem .25rem 0;white-space:nowrap}
+.status-done{color:var(--soca);font-weight:600}
+.status-soon{color:var(--ink-soft)}
+.region-h td{font-family:var(--serif);font-size:1rem;font-style:italic;color:var(--ink-soft);border-bottom:1px solid var(--ink);padding-top:1.4rem}
+
+/* investigations */
+.inv-layout{display:grid;grid-template-columns:13rem minmax(0,1fr);gap:3rem}
+.inv-layout>*{min-width:0}
+.inv-nav{position:sticky;top:4.6rem;align-self:start;font-family:var(--sans);font-size:.86rem;max-height:calc(100vh - 6rem);overflow:auto}
+.inv-nav p{color:var(--ink-soft);margin:0 0 .5rem}
+.inv-nav ol{list-style:none;margin:0;padding:0}
+.inv-nav li a{display:grid;grid-template-columns:1.8rem 1fr;padding:.28rem 0;color:var(--ink-soft);text-decoration:none;border-bottom:1px solid transparent}
+.inv-nav li a .n{color:var(--turmeric);font-weight:600}
+.inv-nav li a.done{color:var(--ink)}
+.inv-nav li a:hover{color:var(--soca)}
+
+article.inv{padding:0 0 4rem;margin-bottom:4rem;border-bottom:1px solid var(--ink)}
+article.inv:last-child{border-bottom:0}
+.inv-top{display:grid;grid-template-columns:auto 1fr;gap:0 1.4rem;align-items:start;margin-bottom:1.6rem}
+.inv-num{font-size:clamp(4.5rem,9vw,7.5rem);font-weight:300;line-height:.8;color:var(--turmeric);font-variant-numeric:lining-nums}
+.inv-top h3{font-size:clamp(2.4rem,5vw,3.8rem);font-weight:300;letter-spacing:-.02em}
+.inv-top .where{font-family:var(--sans);color:var(--ink-soft);margin-top:.5rem;font-size:.95rem}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(13rem,100%),1fr));gap:0;border-top:1px solid var(--ink);margin:0 0 2.2rem;font-family:var(--sans);font-size:.88rem}
+.facts div{padding:.65rem .8rem .7rem 0;border-bottom:1px solid var(--rule)}
+.facts dt{color:var(--ink-soft);font-size:.78rem;margin-bottom:.15rem}
+.facts dd{margin:0}
+.lede{font-size:1.32rem;line-height:1.5;max-width:var(--measure);margin-bottom:2rem}
+.inv h4{font-size:1.65rem;font-weight:400;margin:2.6rem 0 .9rem;max-width:var(--measure)}
+.inv h5{font-family:var(--sans);font-size:.95rem;font-weight:600;margin:1.6rem 0 .4rem;color:var(--ink)}
+.prose{max-width:var(--measure)}
+.prose p,.prose li{hyphens:auto}
+
+/* evidence labels */
+.ev{display:inline-block;font-family:var(--sans);font-size:.72rem;font-weight:500;padding:.05rem .45rem;border-radius:2px;margin-right:.45rem;vertical-align:.12em;white-space:nowrap}
+.ev-c{background:var(--soca);color:#fff}
+.ev-d{background:#DCE6E2;color:var(--soca-deep)}
+.ev-b{background:#E6E3D6;color:#55503B}
+.ev-e{background:transparent;color:var(--ink);border:1px solid var(--ink-soft)}
+.evkey{display:flex;flex-wrap:wrap;gap:.5rem 1.2rem;font-family:var(--sans);font-size:.85rem;color:var(--ink-soft);margin:.4rem 0 0}
+
+/* menus */
+details.menu{background:var(--sheet);border:1px solid var(--rule);border-radius:3px;margin:1rem 0}
+details.menu>summary{cursor:pointer;padding:.9rem 1rem;font-family:var(--sans);font-weight:600;font-size:.95rem;list-style:none;display:flex;justify-content:space-between;gap:1rem}
+details.menu>summary::-webkit-details-marker{display:none}
+details.menu>summary::after{content:"Show";color:var(--soca);font-weight:500}
+details.menu[open]>summary::after{content:"Hide"}
+details.menu .inner{padding:0 1rem 1rem}
+.menutab td.pos{color:var(--ink-soft);white-space:nowrap;width:7.5rem}
+.menutab td.orig{font-family:var(--serif);font-size:1.02rem}
+.menutab td.orig .tr{display:block;font-family:var(--sans);font-size:.82rem;color:var(--ink-soft);margin-top:.1rem}
+.menutab tr.sec td{font-family:var(--serif);font-style:italic;color:var(--soca);border-bottom:1px solid var(--soca);padding-top:1rem}
+.price{white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* dish investigations */
+details.dish{border-top:1px solid var(--rule);max-width:46rem}
+details.dish:last-of-type{border-bottom:1px solid var(--rule)}
+details.dish>summary{cursor:pointer;list-style:none;padding:1rem 0;display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:baseline}
+details.dish>summary::-webkit-details-marker{display:none}
+details.dish>summary .dn{font-size:1.4rem;line-height:1.25}
+details.dish>summary .dn small{display:block;font-family:var(--sans);font-size:.85rem;color:var(--ink-soft);margin-top:.2rem}
+details.dish>summary::after{content:"+";font-family:var(--sans);font-size:1.4rem;color:var(--soca)}
+details.dish[open]>summary::after{content:"–"}
+.dbody{padding:0 0 1.4rem}
+.dbody .q{display:grid;grid-template-columns:1.6rem 1fr;gap:.4rem;margin-bottom:.9rem}
+.dbody .q>b{font-family:var(--sans);color:var(--turmeric);font-weight:600}
+.dbody .q h6{font-family:var(--sans);font-size:.85rem;font-weight:600;margin:0 0 .2rem;color:var(--ink-soft)}
+.dbody .q p{margin:0 0 .5rem}
+
+/* order */
+.order{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(15rem,100%),1fr));gap:0 2rem;border-top:1px solid var(--ink);margin-top:.6rem}
+.order div{padding:.9rem 0;border-bottom:1px solid var(--rule)}
+.order dt{font-family:var(--sans);font-size:.82rem;color:var(--ink-soft);margin-bottom:.25rem}
+.order dd{margin:0;font-size:1.02rem}
+
+.sources{font-family:var(--sans);font-size:.85rem;color:var(--ink-soft);columns:2 18rem;overflow-wrap:anywhere;column-gap:2.4rem;padding-left:1.1rem}
+.sources li{margin-bottom:.45rem;break-inside:avoid}
+.verified{font-family:var(--sans);font-size:.85rem;background:var(--sheet);border-left:3px solid var(--soca);padding:.7rem .9rem;max-width:46rem;margin:1.2rem 0}
+
+/* stub */
+article.stub .inv-num{font-size:3.6rem;color:var(--ink-soft)}
+article.stub h3{font-size:2.1rem}
+article.stub{padding-bottom:2.4rem;margin-bottom:2.4rem;border-bottom:1px solid var(--rule)}
+.pending{font-family:var(--sans);font-size:.88rem;color:var(--ink-soft);border:1px dashed var(--rule);padding:.6rem .8rem;max-width:46rem}
+
+/* indexes */
+.idx-tools{display:flex;gap:1rem;flex-wrap:wrap;font-family:var(--sans);font-size:.9rem;margin-bottom:1.2rem}
+.idx-tools input{font:inherit;background:var(--sheet);border:1px solid var(--rule);border-radius:3px;padding:.5rem .7rem;min-width:min(18rem,100%)}
+.ingr{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(19rem,100%),1fr));gap:0 2.2rem}
+.ingr details{border-top:1px solid var(--rule);padding:.15rem 0}
+.ingr summary{cursor:pointer;list-style:none;padding:.7rem 0;display:flex;justify-content:space-between;gap:1rem;align-items:baseline}
+.ingr summary::-webkit-details-marker{display:none}
+.ingr summary b{font-weight:400;font-size:1.18rem}
+.ingr summary i{font-family:var(--sans);font-style:normal;font-size:.78rem;color:var(--ink-soft);white-space:nowrap}
+.ingr dl{margin:0 0 1rem;font-size:.98rem}
+.ingr dt{font-family:var(--sans);font-size:.78rem;color:var(--ink-soft);margin-top:.5rem}
+.ingr dd{margin:0}
+
+.tech{counter-reset:none}
+.tech details{border-top:1px solid var(--rule);max-width:52rem}
+.tech summary{cursor:pointer;list-style:none;padding:.9rem 0;display:grid;grid-template-columns:1fr auto;gap:1rem}
+.tech summary::-webkit-details-marker{display:none}
+.tech summary b{font-weight:400;font-size:1.3rem}
+.tech summary span{font-family:var(--sans);font-size:.82rem;color:var(--ink-soft);text-align:right}
+.tech .tb{padding:0 0 1.2rem;max-width:var(--measure)}
+
+.conn{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(21rem,100%),1fr));gap:2.4rem 3rem}
+.conn article h3{font-size:1.55rem;margin-bottom:.5rem}
+.conn article .between{font-family:var(--sans);font-size:.82rem;color:var(--soca);margin-bottom:.6rem}
+
+.essay{font-size:1.2rem;line-height:1.66}
+.essay p:first-of-type::first-letter{font-size:3.6em;float:left;line-height:.82;padding:.08em .08em 0 0;color:var(--soca)}
+
+footer{background:var(--ink);color:#C8CDCB;font-family:var(--sans);font-size:.85rem;padding:2.4rem 0 3rem}
+footer a{color:#fff}
+
+@media (max-width:900px){
+  .mapgrid{grid-template-columns:1fr}
+  #map{min-height:26rem;height:26rem}
+  .maplist{max-height:none}
+  .inv-layout{grid-template-columns:1fr}
+  .inv-nav{position:static;max-height:none;border-bottom:1px solid var(--rule);padding-bottom:1rem}
+  .inv-nav ol{columns:2}
+  .filters input{min-width:100%}
+  #count{margin-left:0}
+}
+@media (max-width:560px){
+  body{font-size:1.06rem}
+  .wrap{padding:0 1.1rem}
+  .inv-top{grid-template-columns:1fr}
+  .inv-num{font-size:4rem}
+  .menutab td.pos{width:auto}
+  .coll .hide-s{display:none}
+}
+@media print{.mast,.mapsec,.filters,.inv-nav{display:none}details{display:block}details>*{display:block}}
+</style>
+</head>
+<body>
+<a class="skip" href="#investigations">Skip to the investigations</a>
+
+<header class="mast">
+  <div class="wrap">
+    <a class="brand" href="#top">The Michelin Menu Atlas</a>
+    <nav aria-label="Sections">
+      <a href="#map-section">Map</a>
+      <a href="#collection">The collection</a>
+      <a href="#investigations">Investigations</a>
+      <a href="#ingredients">Ingredients</a>
+      <a href="#techniques">Techniques</a>
+      <a href="#tradition">Tradition and innovation</a>
+      <a href="#connections">Connections</a>
+      <a href="#perspective">Perspective</a>
+      <a href="#method">Method and sources</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+<div class="wrap opening">
+  <h1>The Michelin Menu Atlas</h1>
+  <p class="stand">Fifteen starred restaurants in fifteen countries, read through the one document every restaurant has to publish: its menu. What is on the plate, where it grew, who taught the cook, and why it matters that it is served here.</p>
+  <div class="edition">
+    <span><b>Pilot edition.</b> Three of fifteen investigations complete: Sorn, Hiša Franko, Levadura de Olla.</span>
+    <span>Menus and Michelin status last verified <b>10 November 2026</b>.</span>
+    <span>Two unstarred entries cover Africa and South Asia, where Michelin publishes no restaurant guide.</span>
+  </div>
+</div>
+
+<section class="mapsec" id="map-section" aria-label="Map of the fifteen restaurants">
+  <div class="mapgrid">
+    <div id="map" role="application" aria-label="Interactive world map. Use the list beside it to move between restaurants."></div>
+    <div class="maplist">
+      <h2>Fifteen tables</h2>
+      <p class="note">Numbered region by region, from the North Atlantic eastwards, then the Americas and Oceania. Select a name to fly to it; select a marker for details.</p>
+      <ol id="maplist"></ol>
+      <div class="legend" aria-label="Map legend">
+        <span><i class="pin done"></i> Investigation published</span>
+        <span><i class="pin soon"></i> In preparation</span>
+        <span><i class="pin bonus"></i> Unstarred bonus entry</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="collection">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>The collection</h2>
+      <p>Every restaurant holds at least one current star, apart from the two unstarred bonus entries. The floor for selection was two stars; Levadura de Olla, Don Julio and Tala are kept at one star because nothing else in their countries does what they do. Search by name, place, chef or ingredient, or filter the list.</p>
+    </div>
+    <div class="filters" role="search">
+      <label>Search<input id="q" type="search" placeholder="Try ‘fermentation’, ‘Oaxaca’ or ‘crab’"></label>
+      <label>Region<select id="fRegion"><option value="">All regions</option></select></label>
+      <label>Stars<select id="fStars"><option value="">Any</option><option value="3">Three stars</option><option value="2">Two stars</option><option value="1">One star</option><option value="0">Unstarred bonus</option></select></label>
+      <label>Theme<select id="fTheme"><option value="">All themes</option></select></label>
+      <label>Status<select id="fStatus"><option value="">All</option><option value="done">Investigation published</option><option value="soon">In preparation</option></select></label>
+      <button type="button" id="reset">Clear filters</button>
+      <span id="count" aria-live="polite"></span>
+    </div>
+    <div class="tablewrap">
+      <table class="coll" id="colltable">
+        <thead><tr><th>No.</th><th>Restaurant</th><th>Place</th><th>Stars</th><th class="hide-s">Chef</th><th class="hide-s">Why it is here</th><th>Investigation</th></tr></thead>
+        <tbody id="collbody"></tbody>
+      </table>
+    </div>
+
+    <h3 style="font-size:1.6rem;margin:3.2rem 0 1rem">Country by country</h3>
+    <p class="measure" style="color:var(--ink-soft)">The geographic spread, and the gaps. Michelin's map is uneven: it has no restaurant guide in Africa or India, and Oceania entered the guide only in 2026, with New Zealand in June and South Australia in October.</p>
+    <div class="tablewrap">
+      <table id="countrytable">
+        <thead><tr><th>Region</th><th>Country</th><th>City</th><th>Guide edition used</th><th>What the country's guide covers</th></tr></thead>
+        <tbody id="countrybody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="investigations">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>The investigations</h2>
+      <p>Each investigation opens with the country, then the restaurant, then the menu itself, then a close reading of the dishes that carry the most meaning. Four labels show where every statement comes from.</p>
+      <div class="evkey">
+        <span><i class="ev ev-c">Confirmed menu</i> on the restaurant's own current menu</span>
+        <span><i class="ev ev-d">Documented</i> reported by a dated review or interview</span>
+        <span><i class="ev ev-b">Background</i> history, ecology, culture</span>
+        <span><i class="ev ev-e">Editorial</i> this guide's own interpretation</span>
+      </div>
+    </div>
+
+    <div class="inv-layout">
+      <aside class="inv-nav" aria-label="Restaurant investigations">
+        <p>Jump to</p>
+        <ol id="invnav"></ol>
+      </aside>
+      <div id="inv-list">
+
+<!-- ===================== SORN ===================== -->
+<article class="inv" id="r-sorn">
+  <div class="inv-top">
+    <div class="inv-num" aria-hidden="true">9</div>
+    <div>
+      <h3>Sorn <span lang="th" style="color:var(--ink-soft)">ศรณ์</span></h3>
+      <p class="where">Khlong Toei, Bangkok · Thailand · Southern Thai</p>
+    </div>
+  </div>
+
+  <dl class="facts">
+    <div><dt>Michelin status</dt><dd><span class="st">★★★</span> MICHELIN Guide Thailand 2026 (three stars since the 2025 edition)</dd></div>
+    <div><dt>Leadership</dt><dd>Supaksorn “Ice” Jongsiri, chef-owner; Yodkwan “Yod” U-Pumpruk, co-founder and head chef</dd></div>
+    <div><dt>Format</dt><dd>One tasting menu, shared main course. No à la carte.</dd></div>
+    <div><dt>Price</dt><dd>Not published on the official site. Diners in 2025–26 report THB 6,500 before service and tax; The Star put the all-in figure at THB 7,700 (January 2025). Confirm when booking.</dd></div>
+    <div><dt>Menu used here</dt><dd>Classic Menu, official PDF created 2 September 2026. Seasonal Menu PDF (16 September 2026) also reproduced.</dd></div>
+    <div><dt>Website</dt><dd><a href="https://sornfinesouthern.com/">sornfinesouthern.com</a></dd></div>
+  </dl>
+
+  <p class="lede">Bangkok has long treated the cooking of the peninsula as the loud relation: hotter, sourer, yellower with turmeric, and shaped by Malay Muslims and Hokkien traders as much as by the capital. Sorn became the first Thai restaurant in the world to hold three Michelin stars by cooking that food without softening it.</p>
+
+  <h4>Why Sorn is in this atlas</h4>
+  <div class="prose">
+    <p><span class="ev ev-e">Editorial</span>Sorn publishes its full menu, in Thai and English, as a downloadable document. That alone makes it rare at this level. The menu is also a map: nearly every line names a river, a coast or a province, and the dishes it reworks come from three distinct communities of the South. It is the clearest case in the collection of a restaurant using a nation's top culinary honour to argue that one region's food deserves the same standing as the court cooking of the capital.</p>
+  </div>
+
+  <h4>Thailand, and which Thailand</h4>
+  <div class="prose">
+    <p><span class="ev ev-b">Background</span>Outside the country, “Thai food” usually means the cooking of the Central Plains: coconut curries, jasmine rice, the balanced sweet-sour-salty-hot palate refined in Bangkok and its royal kitchens. That is one tradition among several. The North eats sticky rice with chilli relishes and shares much with Shan and Burmese neighbours. The Northeast, Isan, is culturally Lao, built on sticky rice, fermented fish (pla ra) and grilled meats. The South runs down a narrow peninsula between the Andaman Sea and the Gulf of Thailand, and its food is dominated by the sea, by turmeric, and by curries without coconut milk that are sharper and hotter than anything in the centre.</p>
+    <p><span class="ev ev-b">Background</span>Trade layered the whole country. Chillies arrived from the Americas through Portuguese and other merchants from the sixteenth century, then took over Thai cooking so thoroughly that it is hard to imagine it without them. Chinese migrants brought the wok, noodles and pork. In the South the layering is especially visible. The three southernmost provinces, Pattani, Yala and Narathiwat, are majority Malay Muslim and were once part of the Sultanate of Pattani, whose territory reached into what is now Kelantan in Malaysia; the Michelin Guide's own history of khao yam traces the dish to that Malay tradition. Phuket, on the Andaman side, has a Hokkien and Peranakan food culture that shares more with Penang than with Bangkok.</p>
+    <p><span class="ev ev-b">Background</span>Bangkok's current generation of chefs has turned this regional variety into a fine-dining subject. Sorn's ground is the South: its kitchen sources from the region's fourteen provinces, according to the MICHELIN Guide's 2025 inspector report.</p>
+  </div>
+
+  <h4>The restaurant</h4>
+  <div class="prose">
+    <h5>Philosophy</h5>
+    <p><span class="ev ev-c">Official site</span>Sorn's own statement is unusually modest for a three-star kitchen. Its headline is “Honouring the Past. Cooking for the Future”, and it says Southern Thai food does not need reinventing; what it needs is time, patience and care. The name is said to come from the Sanskrit “Sorana”, and the Michelin Guide glosses the related word as a refuge.</p>
+    <p><span class="ev ev-d">Documented</span>Jongsiri did not train in a culinary school. He told the Michelin Guide that he learned to cook from his grandmother, and much of his team has no formal training either. Sorn opened in 2018, created by Jongsiri with Yodkwan U-Pumpruk and other cooks from Baan Ice, his family's Southern restaurant in Bangkok; all were natives of the South (Bangkok Post, 2019). The World's 50 Best puts the share of hyperlocal Southern ingredients at nearly 90 per cent.</p>
+
+    <h5>The geography of the menu</h5>
+    <p><span class="ev ev-c">Confirmed menu</span>Read the Classic Menu as an atlas and both coasts appear. From the Andaman side come Phuket lobster, Andaman squid and the mineral water from Ranong used to steam the rice. From the Gulf side come Tapi River prawns: the Tapi drains Surat Thani province into the Gulf of Thailand. The rice salad is dressed with budu, the fermented fish sauce of the Malay south, and the closing dessert is a Phuket Hokkien sweet.</p>
+    <p><span class="ev ev-d">Documented</span>The restaurant has long extended this to the fuel and water: in 2022 Jongsiri told The Nation that even the charcoal and the cooking water come from the South. The crabs for the signature course are delivered from Surat Thani every morning (MICHELIN Guide, 2020).</p>
+
+    <h5>Cultural context</h5>
+    <p><span class="ev ev-e">Editorial</span>Three Southern communities are on this menu. The Malay Muslim deep south supplies khao yam, budu and the roti with green curry; the boat-building fishing culture of the same coast is referenced in a course named Gor Lae, after the painted kolae boats of Pattani and Narathiwat. Phuket's Hokkien Chinese supply Bi Co Moi. The Thai Buddhist fishing villages of the Gulf supply the crab, the prawns and the habit of eating everything with chilli paste. Sorn presents them as one regional cuisine, which is how Southerners tend to eat, though it is not how Thai national food culture has usually been told.</p>
+
+    <h5>Techniques</h5>
+    <p><span class="ev ev-c">Official site</span>The site names charcoal cooking, clay pots, stone grinding, traditional rice steaming, and chilli pastes made in-house with pestle and mortar.</p>
+    <p><span class="ev ev-d">Documented</span>For the crab course the kitchen pounds its chilli paste using three different techniques so that it clings to the crab without gelatine or any stabiliser (MICHELIN Guide, 2020). The rice is steamed over charcoal in a clay pot; the Michelin inspector was able to watch it being done from the first floor.</p>
+
+    <h5>People and producers</h5>
+    <p><span class="ev ev-c">Official site</span>Sorn says its produce comes directly from farmers, fishermen and small communities across the South. It names none of them, and none is named on the menu. That is a real limit on what can be verified here.</p>
+    <p><span class="ev ev-d">Documented</span>Earlier reporting gives glimpses: a seaweed powder dried on the restaurant's roof and supplied by a Krabi researcher identified as Associate Professor Mantana (Bangkok Post, 2019), and Surat Thani crabs delivered at dawn (MICHELIN Guide, 2020). Both may no longer apply.</p>
+
+    <h5>The dining experience</h5>
+    <p><span class="ev ev-d">Documented</span>Sorn occupies a restored two-storey villa in a leafy lane off Sukhumvit 26. Each table is greeted by the chef, and staff ask every guest how much heat they want before explaining where each course comes from. The meal runs as a sequence of single plates, then turns into a shared Thai table with rice, condiments and side dishes, then ends with a dessert trolley (MICHELIN Guide inspector report, February 2025). The cellar holds more than 500 labels, according to the official site. In 2025 the inspector noted that online bookings opened at noon on the 1st, 21st and 25th of each month; check the current system before planning around it.</p>
+
+    <h5>What makes it worth three stars</h5>
+    <p><span class="ev ev-e">Editorial</span>Plenty of restaurants refine regional food. Sorn's distinction is structural. It keeps the architecture of a Southern home meal, in which the rice and its accompaniments are the point and individual dishes exist to be eaten with rice, and it holds the heat at the level a Southerner would expect. Precision shows up in the places a diner would not think to look: rice steamed in water from a named province, chilli paste engineered to stay on a crab leg. The kitchen also changes slowly. The crab stick and the rice salad have been served since 2018, which suggests a restaurant more interested in perfecting a canon than in novelty.</p>
+  </div>
+
+  <h4>The menu</h4>
+  <div class="prose">
+    <p><span class="ev ev-c">Confirmed menu</span>Sorn runs two menus. The <b>Classic Menu</b> is the standing one. The <b>Seasonal Menu</b> was previewed on set dates in October and November 2026 and launches fully in early January 2027. The official site says it shares only the rice salad and the chilli fish sauce with the Classic Menu. The tables below reproduce both PDFs line by line, with the restaurant's English names and component lists as printed. Thai names are given as printed, cleaned of extraction errors; the translations in grey are this guide's.</p>
+  </div>
+
+  <details class="menu" open>
+    <summary>Classic Menu, “Your Southern Thai Experience” (PDF created 2 September 2026)</summary>
+    <div class="inner tablewrap">
+      <table class="menutab">
+        <thead><tr><th>Course</th><th>Dish as named on the menu</th><th>Components as printed</th></tr></thead>
+        <tbody>
+          <tr class="sec"><td colspan="3">Amuse Bouche <span lang="th">(เมนูเปิดลิ้น)</span>, “opening the tongue”</td></tr>
+          <tr><td class="pos">1</td><td class="orig">Let's Eat Rice <span lang="th">กินข้าวกัน</span><span class="tr">“let's eat rice together”</span></td><td>Tapi River prawn, jasmine rice, sago cracker, prawn fat</td></tr>
+          <tr class="sec"><td colspan="3">Prelude <span lang="th">(โหมโรง)</span>, the overture in Thai classical music</td></tr>
+          <tr><td class="pos">2</td><td class="orig">Hand Caught Abalone <span lang="th">เป๋าฮื้อ</span><span class="tr">abalone</span></td><td>Young mangosteen, hoi tai seaweed, green mango</td></tr>
+          <tr><td class="pos">3</td><td class="orig">Silver Sillago <span lang="th">ปลาทราย</span><span class="tr">“sand fish”, sillago</span></td><td>Turmeric, scallop, Ming aralia, curry paste</td></tr>
+          <tr><td class="pos">4</td><td class="orig">The Ocean <span lang="th">มหาสมุทร</span><span class="tr">ocean</span></td><td>Blue crab, Phuket lobster, spotted babylon (sea snail)</td></tr>
+          <tr><td class="pos">5</td><td class="orig">Sotong <span lang="th">ซูตง</span><span class="tr">the Malay word for squid</span></td><td>Andaman squid, eggplant, lobster, pickled chilli</td></tr>
+          <tr><td class="pos">6</td><td class="orig">Sorbet <span lang="th">ล้างปาก</span><span class="tr">“rinse the mouth”</span></td><td>—</td></tr>
+          <tr><td class="pos">7</td><td class="orig">Crab Stick <span lang="th">กรรชูเปียง</span><span class="tr">Sorn's coinage, from khan chiang pu, “crab leg”</span></td><td>Blue crab, mud crab roe, chilli paste</td></tr>
+          <tr><td class="pos">8</td><td class="orig">Melinjo <span lang="th">ใบเหลียงต้มกะทิ</span><span class="tr">liang leaves simmered in coconut milk</span></td><td>Coconut milk, coconut meat, dried shrimp and squid</td></tr>
+          <tr><td class="pos">9</td><td class="orig">Gor Lae <span lang="th">กอและ</span><span class="tr">kolae, after the painted fishing boats of the deep south</span></td><td>Cockle, dried abalone</td></tr>
+          <tr class="sec"><td colspan="3">Vegetable <span lang="th">(พืชพรรณผักใต้)</span>, “plants and vegetables of the South”</td></tr>
+          <tr><td class="pos">10</td><td class="orig">The Sea Holds the Forest <span lang="th">ข้าวยำ</span><span class="tr">khao yam, rice salad</span></td><td>Turmeric rice, Southern herbs, budu sauce</td></tr>
+          <tr class="sec"><td colspan="3">Main Course <span lang="th">(กินอย่างไทย)</span>, “The Thai Way of Sharing”</td></tr>
+          <tr><td class="pos">11</td><td class="orig">Southern Jasmine Rice</td><td>Charcoal steamed, Ranong mineral water</td></tr>
+          <tr><td class="pos">Condiments <span lang="th">เครื่องเคียงพื้นบ้าน</span></td><td class="orig">Som Hoak Chili Paste <span lang="th">น้ำพริกส้มโฮก</span> · Pork Rind <span lang="th">กากหมู</span> · Sweet Shrimp <span lang="th">กุ้งหวาน</span> · Dried Yellow Curry <span lang="th">แกงส้มแห้ง</span> · Fish Sauce and Chili <span lang="th">พริกน้ำปลา</span><span class="tr">“local accompaniments”. The menu does not explain “som hoak”; this guide has not confirmed its meaning.</span></td><td>As listed</td></tr>
+          <tr><td class="pos">Sides <span lang="th">กับข้าว</span><span class="tr" style="display:block;font-size:.8rem">“with rice”</span></td><td class="orig">Stink Bean <span lang="th">ผัดสะตอพริกแกงใต้</span><span class="tr">sataw stir-fried with Southern curry paste</span></td><td>Redtail catfish, Southern curry paste</td></tr>
+          <tr><td class="pos"></td><td class="orig">Omelet <span lang="th">ไข่เจียวกุ้งลายเสือ</span><span class="tr">omelette with tiger prawn</span></td><td>Organic egg, tiger prawn, shallot, sweet basil</td></tr>
+          <tr><td class="pos"></td><td class="orig">Morning Glory <span lang="th">ผัดผัก</span><span class="tr">stir-fried greens</span></td><td>Abalone liver, dried scallop and shrimp</td></tr>
+          <tr><td class="pos"></td><td class="orig">Roti <span lang="th">โรตีแกงเขียวหวาน</span><span class="tr">roti with green curry</span></td><td>Beef, Southern green curry</td></tr>
+          <tr><td class="pos"></td><td class="orig">Plum Soup <span lang="th">แกงจืดต้มบ๊วย</span><span class="tr">clear soup with salted plum</span></td><td>Stingray</td></tr>
+          <tr class="sec"><td colspan="3">Sweets <span lang="th">(ของหวาน)</span></td></tr>
+          <tr><td class="pos">12</td><td class="orig">Bi Co Moi <span lang="th">บีโกหมอย</span><span class="tr">Hokkien name for black sticky rice pudding</span></td><td>Black sticky rice, young coconut ice cream, cashew</td></tr>
+          <tr><td class="pos">13</td><td class="orig">Seasonal Canned Fruit <span lang="th">ผลไม้กระป๋อง</span></td><td>—</td></tr>
+          <tr><td class="pos">14</td><td class="orig">Petit Four <span lang="th">นพเก้า</span><span class="tr">“nine gems”</span></td><td>Southern-style tea or coffee</td></tr>
+        </tbody>
+      </table>
+      <p class="sans" style="font-size:.82rem;color:var(--ink-soft);margin-top:.8rem">Course numbers are this guide's, following the order of the PDF. The PDF lists no prices and no date; the creation date comes from the file's metadata.</p>
+    </div>
+  </details>
+
+  <details class="menu">
+    <summary>Seasonal Menu (PDF created 16 September 2026; previewed Oct–Nov 2026, full launch early January 2027)</summary>
+    <div class="inner tablewrap">
+      <table class="menutab">
+        <thead><tr><th>Course</th><th>Dish as named on the menu</th><th>Components as printed</th></tr></thead>
+        <tbody>
+          <tr class="sec"><td colspan="3">Prelude <span lang="th">(โหมโรง)</span></td></tr>
+          <tr><td class="pos">1</td><td class="orig">Coconut Milk Steamed Rice <span lang="th">ข้าวมันแกงกุ้ง</span><span class="tr">coconut rice with prawn curry</span></td><td>Shrimp, jasmine rice, Southern curry</td></tr>
+          <tr><td class="pos">2</td><td class="orig">White Gracilaria Seaweed Salad <span lang="th">ยำสาหร่ายผมนาง</span><span class="tr">“maiden's-hair” seaweed salad</span></td><td>Crab, papaya, winter melon</td></tr>
+          <tr><td class="pos">3</td><td class="orig">Cashew Relish <span lang="th">กาหยู / กุ้งทอด</span><span class="tr">kayu (the Southern word for cashew), fried prawns</span></td><td>Shrimp, Ming aralia, curry paste</td></tr>
+          <tr><td class="pos">4</td><td class="orig">The Ocean <span lang="th">มหาสมุทร</span></td><td>Cockle and geoduck, mantis shrimp, skipjack tuna</td></tr>
+          <tr><td class="pos">5</td><td class="orig">Wing and Shell <span lang="th">ปีกและเปลือก</span></td><td>Abalone, taro, chicken skin, bird's nest soup</td></tr>
+          <tr><td class="pos">6</td><td class="orig">Sorbet<span class="tr">Thai name illegible in the PDF</span></td><td>Young mangosteen</td></tr>
+          <tr><td class="pos">7</td><td class="orig">Crab Stick <span lang="th">กูป้าม</span></td><td>Mangrove crab, mud crab roe, yellow chilli, crab tomalley</td></tr>
+          <tr><td class="pos">8</td><td class="orig">Mackerel <span lang="th">ต้มปลาทูกะทิสายบัว</span><span class="tr">mackerel simmered in coconut milk with lotus stems</span></td><td>Coconut milk, lotus stem, coconut shoot and meat</td></tr>
+          <tr class="sec"><td colspan="3">Vegetable <span lang="th">(พืชพรรณผักใต้)</span></td></tr>
+          <tr><td class="pos">9</td><td class="orig">The Sea Holds the Forest <span lang="th">ข้าวยำ</span></td><td>Turmeric rice, Southern herbs, budu sauce</td></tr>
+          <tr class="sec"><td colspan="3">Main Course, “The Thai Way of Sharing”</td></tr>
+          <tr><td class="pos">10</td><td class="orig">Southern Jasmine Rice</td><td>Charcoal steamed, Ranong mineral water</td></tr>
+          <tr><td class="pos">Condiments</td><td class="orig">Tamarind Chili Paste <span lang="th">น้ำพริกมะขาม</span> · Dried Anchovies <span lang="th">ปลาลูกเบร่</span> · Sweet Pork Belly <span lang="th">หมูหวาน</span> · Coconut Milk Dip <span lang="th">หลน</span> · Fish Sauce and Chili <span lang="th">พริกน้ำปลา</span></td><td>As listed</td></tr>
+          <tr><td class="pos">Sides</td><td class="orig">Stink Beans <span lang="th">ผัดสะตอเนื้อกะปิหมึกดำ</span></td><td>Beef, squid ink, shrimp paste</td></tr>
+          <tr><td class="pos"></td><td class="orig">Yellow Curry and Crispy Pork Omelet <span lang="th">แกงส้ม ไข่เจียวหมูกรอบ</span></td><td>Giant catfish roe</td></tr>
+          <tr><td class="pos"></td><td class="orig">String Bean <span lang="th">ผัดถั่วปลาดุกร้า</span><span class="tr">string beans with salted fermented catfish</span></td><td>Salted catfish</td></tr>
+          <tr><td class="pos"></td><td class="orig">Roti <span lang="th">โรตี แกงกะหรี่</span><span class="tr">roti with curry</span></td><td>River prawn, curry, prawn fat</td></tr>
+          <tr><td class="pos"></td><td class="orig">Clear Soup <span lang="th">ต้มเป็ดฟักมะนาวดอง</span><span class="tr">duck and winter melon soup with pickled lime</span></td><td>Pickled lime, duck broth</td></tr>
+          <tr class="sec"><td colspan="3">Sweets</td></tr>
+          <tr><td class="pos">11</td><td class="orig">White Tea Ice Cream <span lang="th">ไอศกรีมชาขาว</span></td><td>Watermelon, pineapple jelly, rambutan</td></tr>
+          <tr><td class="pos">12</td><td class="orig">Khao Ka Ya Khoo <span lang="th">ข้าวกะยาคู</span></td><td>Young rice milk pudding, palm sugar ice cream</td></tr>
+          <tr><td class="pos">13</td><td class="orig">Seasonal Canned Fruit</td><td>—</td></tr>
+          <tr><td class="pos">14</td><td class="orig">Petit Four</td><td>Southern-style tea or coffee</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <h4>Five dishes, read closely</h4>
+
+  <details class="dish">
+    <summary><span class="dn">Crab Stick <span lang="th">กรรชูเปียง</span><small>Course 7, Classic Menu · served since opening</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-c">Confirmed menu</span>Blue crab, mud crab roe and chilli paste. <span class="ev ev-d">Documented</span>A single leg of crab, shell pointing up, its meat coated in roe and set in a small granite mortar holding a fiery yellow chilli dip, eaten in one or two bites like a lolly (The World's 50 Best). The crab is brought in alive, steamed and grilled; the meat and the roe are cooked at different temperatures before being brought together (The Star, 2025; Bangkok Post, 2019).</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-d">Documented</span>The source dish is khan chiang pu, the crab leg, which 50 Best calls the most fought-over part of the crab at any Thai table. Jongsiri has said the idea came from eating crab roe with chilli paste at a local restaurant and finding the roe overcooked (MICHELIN Guide, 2020). <span class="ev ev-b">Background</span>Crab with a pounded chilli paste is ordinary seaside eating along the Gulf coast; this is the restaurant version of a fisherman's snack.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-d">Documented</span>Two kinds of crab, large males and roe-bearing females, arrive from Surat Thani on the Gulf coast every morning (MICHELIN Guide, 2020). <span class="ev ev-c">Confirmed menu</span>The current Classic Menu specifies blue crab with mud crab roe; the Seasonal Menu switches to mangrove crab and adds the crab's tomalley, which suggests the dish follows what the coast is landing.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-d">Documented</span>The challenge was physical: a paste loose enough to taste fresh but firm enough to cling to the meat. The kitchen solved it with technique alone, pounding the chillies three different ways and using no gelatine or stabiliser (MICHELIN Guide, 2020).</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>The dish shows Sorn's method in miniature. It takes the prized fragment of a shared, messy meal, isolates it, and serves it without lowering the heat. Anyone unfamiliar with the South should expect the chilli to be the point of the dish, with the sweetness of the crab there to carry it.</p></div></div>
+    </div>
+  </details>
+
+  <details class="dish">
+    <summary><span class="dn">The Sea Holds the Forest <span lang="th">ข้าวยำ</span><small>Course 10 · the only course shared by both menus</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-c">Confirmed menu</span>Turmeric rice, Southern herbs and budu sauce. <span class="ev ev-d">Documented</span>Jasmine rice is steamed with turmeric, dried in the sun and fried in coconut oil, then tossed with pomelo, cucumber, green beans, lemongrass, torch ginger bud and bean sprouts, and dressed with Pattani budu sweetened with palm sugar and deepened with shrimp paste (The Star, January 2025). It has been on the menu since the restaurant opened.</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-b">Background</span>Khao yam is the Thai name for the dish Malay speakers call nasi kerabu, a breakfast and market staple of the Malay Muslim provinces. The Michelin Guide's 2018 history ties it to the Sultanate of Pattani, which once took in what is now Kelantan. In Pattani it is often made with rice tinted blue by butterfly pea flower and dressed with budu, the fermented fish sauce found in nearly every Southern Muslim kitchen. A 2024 BenarNews report from Pattani describes it as a cheap staple that some local cooks link to an eighteenth-century war, and notes that wealthier diners now pay thousands of baht for it as fine dining.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-b">Background</span>Budu is made by salting small fish, usually anchovy, and fermenting them for months. It is produced mainly in Pattani, Yala and Narathiwat, and across the border in Kelantan and Terengganu. The town of Sai Buri in Pattani is widely cited as the source of the best. Torch ginger bud (<i>Etlingera elatior</i>) and the other herbs are plants of the peninsula's forest and kitchen gardens.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-e">Editorial</span>Sorn makes two decisive changes. It swaps the blue rice of Pattani for turmeric yellow, the colour of the South's curries, and it crisps the grains so the salad has texture. Then it frames the dish as a landscape, a “forest” held by the sea, which turns a breakfast plate into a statement about where the South's flavours come from.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>Of everything on the menu, this dish carries the most political weight. The deep south has lived with a separatist insurgency since 2004, and its Malay Muslim identity sits uneasily inside the national story. A three-star Bangkok restaurant made a Pattani breakfast its only unchanging course. For a newcomer, the unfamiliar note is budu: rounder, sweeter and more pungent than ordinary Thai fish sauce.</p></div></div>
+    </div>
+  </details>
+
+  <details class="dish">
+    <summary><span class="dn">Southern Jasmine Rice, “The Thai Way of Sharing”<small>Course 11 · main course with condiments and sides</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-c">Confirmed menu</span>Jasmine rice steamed over charcoal with mineral water from Ranong, served with five condiments and five side dishes for the table to share. <span class="ev ev-d">Documented</span>It is cooked in a clay pot; The Star noted that the Thai test of good rice is that each grain stays separate (January 2025).</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-b">Background</span>In a Thai meal rice is the meal, and everything else is <i>kap khao</i>, literally “with rice”, the term Sorn uses to head its sides. A Southern table usually adds a pounded chilli relish, fried or dried fish and raw vegetables to cool the heat. The menu's own Thai title for the course, กินอย่างไทย, means “eating the Thai way”.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-b">Background</span>Ranong, on the Andaman coast near the Myanmar border, is known for its hot springs and mineral water. <span class="ev ev-c">Confirmed menu</span>The menu calls the rice “Southern” but does not name a variety or a farm, a gap given how specific the rest of the menu is.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-e">Editorial</span>Tasting menus usually turn every dish into an individual plate. Sorn turns the meal back into a shared table halfway through, and puts its most technical effort into the plainest thing on it.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>The course reflects an understanding of Thai food in which the dishes serve the rice. Diners should pace themselves accordingly. The sides, stink beans with redtail catfish and roti with green curry among them, are meant to be eaten with spoonfuls of rice rather than on their own.</p></div></div>
+    </div>
+  </details>
+
+  <details class="dish">
+    <summary><span class="dn">Roti with Southern green curry <span lang="th">โรตีแกงเขียวหวาน</span><small>Side dish, Classic Menu</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-c">Confirmed menu</span>Roti with beef in a Southern green curry. <span class="ev ev-d">Documented</span>The roti is crisp and flaky. The Star (2025) described the dish as a tribute to Muslim influence in the South, and the Michelin inspector called it both intriguing and powerful.</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-b">Background</span>Roti came to the Malay peninsula with Indian Muslim traders and is sold across the South at Muslim-run stalls, often for breakfast with curry. Beef is significant: many Chinese-Thai and some Thai Buddhist households avoid it, while Muslim Southern cooking uses it freely.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-c">Confirmed menu</span>The menu says only “beef”. It does not name a cut, breed or farm, so the provenance cannot be checked.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-c">Confirmed menu</span>The Seasonal Menu replaces it with roti and a river-prawn curry finished with prawn fat. Bread, curry and a dipping habit stay constant while the protein follows the season.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>Green curry is the most exported Thai dish there is. Serving it with a Muslim breakfast bread reminds the diner that “Thai” food in the South has always been a negotiation between communities.</p></div></div>
+    </div>
+  </details>
+
+  <details class="dish">
+    <summary><span class="dn">Bi Co Moi <span lang="th">บีโกหมอย</span><small>Dessert, Classic Menu</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-c">Confirmed menu</span>Black sticky rice, young coconut ice cream and cashew. <span class="ev ev-d">Documented</span>Earlier write-ups describe it as one of the menu's show-stoppers (The Star, 2025).</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-b">Background</span>Bee-go-moi is the Phuket Hokkien name for black glutinous rice cooked to a porridge and topped with salted coconut milk. Phuket's cooking mixes Chinese, Malay and Thai influences, and the same dessert is sold in Penang as bee koh moy and across Malaysia as pulut hitam. Phuket's Hokkien community arrived largely with the tin-mining economy of the nineteenth century.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-b">Background</span>Black glutinous rice is a whole-grain sticky rice whose bran turns the pudding deep purple. The Seasonal Menu's Thai name for its cashew course, กาหยู (kayu), is the Southern word for cashew, borrowed from Malay; it marks the nut as a Southern ingredient.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-e">Editorial</span>The salted coconut cream that normally sits on the warm porridge becomes a young-coconut ice cream, and the nuts add crunch. The flavour logic is kept, and only the temperatures change.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>Ending a Southern Thai meal on a Hokkien street sweet recognises the Chinese layer of the peninsula, which the Thai national story often leaves out.</p></div></div>
+    </div>
+  </details>
+
+  <h4>What would you actually order?</h4>
+  <div class="prose"><p><span class="ev ev-e">Editorial</span>Sorn serves a single menu, so the question becomes what to pay most attention to.</p></div>
+  <dl class="order">
+    <div><dt>Three most culturally interesting</dt><dd>The Sea Holds the Forest, for the Pattani budu; the roti with green curry, for the Muslim South; Bi Co Moi, for Phuket's Hokkien layer.</dd></div>
+    <div><dt>Most representative of the philosophy</dt><dd>The Crab Stick: a regional snack refined with technique alone, at full heat.</dd></div>
+    <div><dt>Most unfamiliar to an international diner</dt><dd>Stink beans (sataw) with redtail catfish: bitter, sulphurous, green, and a Southern obsession.</dd></div>
+    <div><dt>Worth researching further</dt><dd>Budu, and the small producers of Sai Buri who make it.</dd></div>
+  </dl>
+
+  <div class="verified"><b>Last verified 10 November 2026.</b> Michelin status: Time Out Bangkok and Michelin's 2026 Thailand selection (published 27 November 2025). Menus: official PDFs downloaded from sornfinesouthern.com. A 2027 Thailand guide is expected within weeks; re-check before publishing.</div>
+
+  <details class="menu">
+    <summary>Sources for Sorn</summary>
+    <div class="inner">
+      <ol class="sources">
+        <li>Sorn, official site and menus. <a href="https://sornfinesouthern.com/">sornfinesouthern.com</a>; <a href="https://sornfinesouthern.com/wp-content/uploads/Classic-Menu.pdf">Classic Menu PDF</a>; <a href="https://sornfinesouthern.com/wp-content/uploads/Seasonal_Menu.pdf">Seasonal Menu PDF</a>. Accessed 10 Nov 2026.</li>
+        <li>MICHELIN Guide, “Michelin Guide Thailand 2026” (27 Nov 2025). <a href="https://guide.michelin.com/en/article/michelin-guide-ceremony/michelin-guide-thailand-2026">guide.michelin.com</a></li>
+        <li>Time Out Bangkok, “Bangkok's Sühring elevated to three Michelin stars” (2026 list). <a href="https://www.timeout.com/bangkok/news/michelin-stars-in-thailand-for-2026-announced-112725">timeout.com</a></li>
+        <li>MICHELIN Guide, “What Is It Like to Eat at Sorn…” inspector report (7 Feb 2025). <a href="https://guide.michelin.com/en/article/dining-out/the-inspectors-reveal-all-sorn-thailand-first-three-michelin-star">guide.michelin.com</a></li>
+        <li>MICHELIN Guide Thailand, “My Signature Dish: Gems on Crab Stick” (24 Oct 2020). <a href="https://guide.michelin.com/th/en/article/people/my-signature-dish-the-story-behind-sorn-s-famous-gems-on-crab-stick">guide.michelin.com</a></li>
+        <li>MICHELIN Guide, “Anatomy of a Dish: Khao Yam” (22 Jul 2018). <a href="https://guide.michelin.com/en/article/features/anatomy-of-a-dish-1-khao-yam">guide.michelin.com</a></li>
+        <li>Abirami Durai, The Star, republished by The Nation (2 Jan 2025). <a href="https://www.nationthailand.com/life/food/40044763">nationthailand.com</a></li>
+        <li>The Nation, “Sorn: Growing from fond childhood memories…” (2 Sep 2022). <a href="https://www.nationthailand.com/life/food/40019675">nationthailand.com</a></li>
+        <li>Bangkok Post, “Southern sensation deserves its reputation” (2019). <a href="https://bangkokpost.com/life/social-and-lifestyle/1617470/southern-sensation-deserves-its-reputation">bangkokpost.com</a></li>
+        <li>The World's 50 Best Restaurants, Sorn entry. <a href="https://www.theworlds50best.com/the-list/11-20/sorn.html">theworlds50best.com</a></li>
+        <li>BenarNews, “In Thailand's far south, nasi kerabu is much more than a dish” (6 Dec 2024). <a href="https://www.benarnews.org/english/news/thai/rice-dish-12062024145945.html">benarnews.org</a></li>
+        <li>Budu (sauce); Phuket cuisine; Kolae boat. Wikipedia. <a href="https://en.wikipedia.org/wiki/Budu_(sauce)">Budu</a>, <a href="https://en.wikipedia.org/wiki/Phuket_cuisine">Phuket cuisine</a>, <a href="https://en.wikipedia.org/wiki/Kolae_boat">Kolae boat</a></li>
+        <li>Leela Punyaratabandhu, “Southern Thai Fish Sauce – Nam Bu Du”, SheSimmers. <a href="https://shesimmers.com/portfolio-items/southern-thai-fish-sauce-nam-bu-du-น้ำบูดู">shesimmers.com</a></li>
+      </ol>
+    </div>
+  </details>
+</article>
+
+<!-- ===================== HIŠA FRANKO ===================== -->
+<article class="inv" id="r-hisa-franko">
+  <div class="inv-top">
+    <div class="inv-num" aria-hidden="true">3</div>
+    <div>
+      <h3>Hiša Franko</h3>
+      <p class="where">Staro selo, Kobarid · Slovenia · Soča Valley, Julian Alps</p>
+    </div>
+  </div>
+
+  <dl class="facts">
+    <div><dt>Michelin status</dt><dd><span class="st">★★★</span> MICHELIN Guide Slovenia 2026 (retained June 2026; three stars since 2023, Slovenia's first)</dd></div>
+    <div><dt>Leadership</dt><dd>Ana Roš, chef and co-owner; Yvonne Melee Simon, head chef. Co-owned with Valter Kramar.</dd></div>
+    <div><dt>Format</dt><dd>One tasting menu for lunch and dinner, around three hours. No à la carte. Wednesday to Sunday.</dd></div>
+    <div><dt>Price</dt><dd>Menu 2026 “Euphorest”: €335. Wine pairings (“Classy” or “Funky”) €190; juice and ferment pairing €135. Drinks not included.</dd></div>
+    <div><dt>Menu used here</dt><dd>The restaurant publishes the menu's name and price but not its dishes. Dish list documented by Reporter Gourmet, 5 October 2026.</dd></div>
+    <div><dt>Website</dt><dd><a href="https://www.hisafranko.com/en/our-menu">hisafranko.com</a></dd></div>
+  </dl>
+
+  <p class="lede">A country house in a valley best known abroad for a First World War defeat, run by a self-taught cook who came into her partner's family business. It has become the most visible restaurant in Central Europe by cooking almost nothing that did not grow, graze or swim within reach of the kitchen.</p>
+
+  <h4>Why Hiša Franko is in this atlas</h4>
+  <div class="prose">
+    <p><span class="ev ev-e">Editorial</span>Slovenia is the smallest country in this collection that holds a three-star restaurant, and Hiša Franko is the clearest example of a menu written by a landscape. Kobarid sits where Alpine pasture, Friulian lowland and Adriatic air meet, and the menu draws on each of them. It also lets us test a hard case for this atlas: a restaurant that changes its dishes constantly and does not publish them.</p>
+  </div>
+
+  <h4>Slovenia, a country at four crossroads</h4>
+  <div class="prose">
+    <p><span class="ev ev-b">Background</span>Slovenia is small enough to drive across in three hours, yet it touches four culinary worlds. The Alps in the north and west bring dairy, cured pork, buckwheat and barley. The Pannonian plain in the east, towards Hungary, brings pumpkin-seed oil, paprika and layered pastries. The Mediterranean coast and the Karst bring olive oil, air-dried ham, wine and the Venetian habit of polenta. The Dinaric south leans towards the Balkans. The national tourist board divides the country into two dozen gastronomic regions, a number that says more about local pride than about any neat boundary.</p>
+    <p><span class="ev ev-b">Background</span>History added more layers. Centuries under the Habsburgs left strudel, dumplings and a Central European pastry tradition. The western edge, including the Soča Valley, was long tied to Friuli and Venice; jota, a sauerkraut and bean soup, is eaten on both sides of the Italian border. Seventy years in Yugoslavia brought grilled meats and burek to every town. Kobarid itself is the Caporetto of Italian history, the site of the 1917 breakthrough on the Isonzo front, and the valley still carries the memory of that front line.</p>
+    <p><span class="ev ev-b">Background</span>The MICHELIN Guide arrived only in 2020. Hiša Franko received two stars that year and a third in 2023, and the 2026 guide lists 74 Slovenian restaurants and 13 stars in total. Ana Roš, who has no formal culinary training, became the face of that change after the Netflix series Chef's Table featured her in 2016 and The World's 50 Best named her Best Female Chef in 2017.</p>
+  </div>
+
+  <h4>The restaurant</h4>
+  <div class="prose">
+    <h5>Philosophy</h5>
+    <p><span class="ev ev-c">Official site</span>The restaurant calls its cooking expressive, intense and unorthodox, and sums up its approach in two words: follow nature. It says every ingredient has a name, a face and a place. Each spring it writes a new menu that tells a different story about the valley; the core idea holds for the year while individual dishes keep changing with what is available. The 2026 menu is called Euphorest, a blend of euphoria and forest. In announcing it, Roš described stepping into the forest as the moment “the weight lifts”.</p>
+
+    <h5>The geography of its food</h5>
+    <p><span class="ev ev-b">Background</span>Kobarid stands in the upper Soča Valley, the Isonzo of Italian maps, under the Julian Alps and a few kilometres from the Italian border. The river is famous for its turquoise water and its trout. Mediterranean and Central European air masses meet here, and the high pastures above Tolmin have produced cheese for centuries. <span class="ev ev-c">Official site</span>The kitchen describes itself as fiercely local. Its stated sources are a single forager who collects wild herbs, mushrooms and mountain plants each morning; a local fishing family whose waters were the last refuge of the native marble trout; high-mountain dairies; and farmers who raise the protected Drežnica goat, with lamb from the same community when goat is not available. <span class="ev ev-d">Documented</span>The New York Times has reported that nearly every ingredient comes from within 50 kilometres (as cited by Wikipedia).</p>
+    <p><span class="ev ev-c">Official site</span>Seafood is a notable exception. The site says it is becoming rare on the menu because the health of the seas no longer allows certainty. A northern Adriatic cuttlefish still appears in the autumn 2026 menu documented below.</p>
+
+    <h5>Cultural context</h5>
+    <p><span class="ev ev-d">Documented</span>Hiša Franko means “Franko's house”. Franko Kramar turned the property into a restaurant and guesthouse in the 1970s. It belonged to the family of Valter Kramar, Roš's partner at the time, and Roš became the cook. <span class="ev ev-e">Editorial</span>The restaurant does not reconstruct Slovenian classics; you will not find a textbook jota or štruklji on the Euphorest menu. It takes the valley's raw materials and its peasant logic — cheese aged to survive winter, potatoes, barley in place of rice, honey and wax — and recombines them with techniques gathered by an international kitchen team. In that sense it challenges the idea that a national cuisine must be a list of dishes.</p>
+
+    <h5>Techniques</h5>
+    <p><span class="ev ev-d">Documented</span>The autumn 2026 menu shows baking in a crust of hay, ageing trout for two days before grilling it, hand-rolling pasta, toasting and creaming barley like a risotto, and infusing ice cream with beeswax. The kitchen makes its own cola. The non-alcoholic pairing is built from house juices, kombucha, infusions and ferments, including tomato water infused with hay (Reporter Gourmet, October 2026). Hiša Franko is also known for ageing the local Tolminc cheese; one long-time visitor described aged Tolminc taking on several distinct personalities (WNF Diary, updated September 2026).</p>
+
+    <h5>People and producers</h5>
+    <p><span class="ev ev-d">Documented</span>Named and unnamed suppliers documented in 2026: the trout tank outside the restaurant, fed by the adjoining stream; potatoes grown to Roš's specification by a nearby farm; beeswax from a local producer; Istrian olive oil from the head chef's neighbour; the Orto Felice kitchen garden; bread from Pekarna Ana, Roš's own bakery; and two biodynamic farmers from a Ljubljana market (Reporter Gourmet, October 2026). <span class="ev ev-b">Background</span>The valley's largest Tolminc maker is the Planika dairy in Kobarid, which produces about 100 tonnes a year (RTV Slovenija). This guide has not confirmed whether Hiša Franko buys from Planika or from mountain dairies directly.</p>
+
+    <h5>The dining experience</h5>
+    <p><span class="ev ev-d">Documented</span>Lunch begins on a green terrace with cocktails and brioches filled with Tolmin cheese before guests move inside (Plava kamenica, June 2026). One autumn 2026 account describes the first bite, a small wrap of seasonal vegetables and herbs, arriving on stones from the Soča under a veil of mist meant to evoke the river at dawn (Fab Foodie Swede, October 2026). <span class="ev ev-c">Official site</span>The house asks guests to arrive on time, accepts children over twelve, and cannot cater for dairy-free or vegan diets. That rule alone shows how central milk is to the menu. There are guest rooms, so many diners stay the night.</p>
+
+    <h5>What makes it worth three stars</h5>
+    <p><span class="ev ev-e">Editorial</span>Michelin's own summary stresses Roš's personality and flavours with no half measures. The more interesting achievement is coherence under constant change. The dishes on the menu in June were not the dishes on the menu in October, yet both sets read unmistakably as the Soča Valley: dairy and acidity, wild green bitterness, smoke, river fish. Few kitchens at this level keep so much of the menu provisional while keeping its identity fixed.</p>
+  </div>
+
+  <h4>The menu</h4>
+  <div class="prose">
+    <p><span class="ev ev-c">Confirmed menu</span>Name and price only: Menu 2026, Euphorest, €335, single menu for lunch and dinner. <span class="ev ev-d">Documented</span>The dish list below is the full sequence published by Reporter Gourmet on 5 October 2026, from a visit during the autumn. It is labelled as previously documented because the restaurant changes dishes continually and confirms none of them online. A second table adds dishes recorded by other 2026 visitors, which shows how far the menu moves within one season.</p>
+  </div>
+
+  <details class="menu" open>
+    <summary>Euphorest, autumn 2026 sequence (Reporter Gourmet, 5 October 2026)</summary>
+    <div class="inner tablewrap">
+      <table class="menutab">
+        <thead><tr><th>Position</th><th>Dish as reported</th><th>Components and preparation</th></tr></thead>
+        <tbody>
+          <tr class="sec"><td colspan="3">First bites, on the terrace</td></tr>
+          <tr><td class="pos">1</td><td class="orig">Brioches with Tolmin cheese<span class="tr">brioš s tolminskim sirom</span></td><td>Small brioches filled with Tolminc, the valley's protected cheese</td></tr>
+          <tr><td class="pos">2</td><td class="orig">Herb and flower bouquet</td><td>Aromatic herbs and garden flowers, amaranth leaves, seed cream</td></tr>
+          <tr class="sec"><td colspan="3">Opening courses, eaten by hand</td></tr>
+          <tr><td class="pos">3</td><td class="orig">Garden leaves</td><td>A leaf filled with a small quail egg, egg-yolk emulsion, tomato and raspberry gel, fresh tomatoes and raspberries, garden flowers</td></tr>
+          <tr><td class="pos">4</td><td class="orig">Celery and pumpkin seeds</td><td>Celery with northern Adriatic cuttlefish, a cream of oregano and savory, herbs and flowers</td></tr>
+          <tr><td class="pos">5</td><td class="orig">Kohlrabi, horseradish and wild herbs</td><td>A “taco” whose shell is a thin slice of kohlrabi, filled with garden and farm roots and vegetables, tarragon, campion, small white flowers</td></tr>
+          <tr class="sec"><td colspan="3">House classics</td></tr>
+          <tr><td class="pos">6</td><td class="orig">Cream puff</td><td>Filled with smoked skuta (whey cheese) and trout roe</td></tr>
+          <tr><td class="pos">7</td><td class="orig">Potato and hay</td><td>Potatoes of 30–40 g baked in a hay crust; sour cream flavoured with fenugreek and honey</td></tr>
+          <tr class="sec"><td colspan="3">Garden and grain</td></tr>
+          <tr><td class="pos">8</td><td class="orig">Summer Harvest</td><td>Salad of the week's fruit, vegetables, herbs and flowers; toasted cream, watermelon juice, melon gel, Istrian olive oil</td></tr>
+          <tr><td class="pos">9</td><td class="orig">Farfalle</td><td>Butterfly pasta with two sauces, gorgonzola and strawberry, to be eaten together</td></tr>
+          <tr><td class="pos">10</td><td class="orig">Tagliolini</td><td>Hand-rolled; pork sauce with fresh and dried stone fruit, including apricot and peach</td></tr>
+          <tr><td class="pos">11</td><td class="orig">Barley “risotto”</td><td>Toasted, creamed barley, black pepper, chanterelles, black Istrian truffle</td></tr>
+          <tr class="sec"><td colspan="3">River and forest</td></tr>
+          <tr><td class="pos">12</td><td class="orig">Trota la regina<span class="tr">Italian: “trout the queen”</span></td><td>Trout from the restaurant's tank, aged two days and grilled; lentils in several textures; Malabar spinach, blue borage and other herbs; vinegar and butter reduction</td></tr>
+          <tr><td class="pos">13</td><td class="orig">Roe deer</td><td>Cooked on a hot griddle; roast sauce, daikon, nasturtium and epazote from the garden</td></tr>
+          <tr class="sec"><td colspan="3">Desserts</td></tr>
+          <tr><td class="pos">14</td><td class="orig">Beans, chestnuts and cola</td><td>Introduces the house-made cola used in the gelato</td></tr>
+          <tr><td class="pos">15</td><td class="orig">Beeswax</td><td>Ice cream infused with wax from a local beekeeper, poppy-seed sauce</td></tr>
+        </tbody>
+      </table>
+      <p class="sans" style="font-size:.82rem;color:var(--ink-soft);margin-top:.8rem">The article was written in Italian; dish names are given as published in its English edition. Hiša Franko does not publish Slovenian dish names. The Slovenian rendering of item 1 is this guide's.</p>
+    </div>
+  </details>
+
+  <details class="menu">
+    <summary>Other Euphorest dishes recorded by 2026 visitors</summary>
+    <div class="inner tablewrap">
+      <table class="menutab">
+        <thead><tr><th>Source and date</th><th>Dish</th><th>As described</th></tr></thead>
+        <tbody>
+          <tr><td class="pos">Plava kamenica, 29 June 2026</td><td class="orig">Kohlrabi and horseradish taco</td><td>Also served in early summer; closed the opening sequence</td></tr>
+          <tr><td class="pos">Plava kamenica, June 2026</td><td class="orig">Orzotto with chanterelles</td><td>Barley risotto, apparently an earlier version of item 11</td></tr>
+          <tr><td class="pos">Plava kamenica, June 2026</td><td class="orig">Cola ice cream</td><td>House cola as a palate cleanser</td></tr>
+          <tr><td class="pos">Plava kamenica, June 2026</td><td class="orig">Honey-wax ice cream with poppy sauce</td><td>Main dessert; same idea as item 15</td></tr>
+          <tr><td class="pos">Fab Foodie Swede, 14 October 2026</td><td class="orig">Small wrap of seasonal vegetables and herbs</td><td>First bite, served on Soča river stones under mist</td></tr>
+          <tr><td class="pos">Fab Foodie Swede, October 2026</td><td class="orig">Mountain potato</td><td>A 55 g potato baked in hay; sour cream with toasted yeast and honey; salty “shell” crumbled on top. Compare item 7.</td></tr>
+          <tr><td class="pos">Fab Foodie Swede, October 2026 (photo caption, menu not specified)</td><td class="orig">“Butterfly” pasta</td><td>Toasted nettles, walnuts, skuta, blueberries, Slovenian blue cheese</td></tr>
+        </tbody>
+      </table>
+      <p class="sans" style="font-size:.82rem;color:var(--ink-soft);margin-top:.8rem">The two accounts of the potato disagree on its weight and on the flavouring of the cream. Both may be right on different days, which is how this kitchen works.</p>
+    </div>
+  </details>
+
+  <h4>Five dishes, read closely</h4>
+
+  <details class="dish">
+    <summary><span class="dn">Brioches with Tolmin cheese<small>First bite · and the cheese that runs through the whole menu</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-d">Documented</span>Small brioches stuffed with Tolminc, served on the terrace with the welcome drinks (Reporter Gourmet; Plava kamenica). Skuta, the soft cheese made from whey, turns up later in the cream puff and the butterfly pasta.</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-b">Background</span>Tolminc is a hard cow's-milk cheese named after the town of Tolmin, 15 kilometres down the valley. It was historically made in summer dairies on the mountain pastures of the Julian Alps, where milk had to become cheese to survive the trip down. The European Union registered Tolminc as a protected designation of origin in 2012. The mountain dairies have dwindled: according to a Google Arts &amp; Culture feature, 68 were still working in the 1930s and fewer than 20 survive.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-b">Background</span>Under the protected designation, only milk from cows grazing the defined Tolmin area may be used, and the pastures are mainly stocked with Brown Swiss cattle. The Planika dairy in Kobarid is the largest producer. <span class="ev ev-c">Official site</span>Hiša Franko says it works with high-mountain dairies but does not name them.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-e">Editorial</span>Putting the valley's protected cheese into an enriched French dough as the first thing a guest eats is a statement of method: local material, borrowed technique. The restaurant's reputation for ageing Tolminc in-house, documented over several years, suggests it treats the cheese as a seasoning more than as a course.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>Alpine dairying is a declining way of life, and Tolminc is its last commercial expression in this valley. A three-star kitchen using it from the first bite is economic support as much as gastronomy.</p></div></div>
+    </div>
+  </details>
+
+  <details class="dish">
+    <summary><span class="dn">Potato and hay<small>Item 7 · one of two house classics</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-d">Documented</span>Small potatoes baked in a crust of hay, served with sour cream flavoured with fenugreek and honey (Reporter Gourmet, October 2026). Another autumn visitor was served a 55-gram potato with cream flavoured with toasted yeast and honey, and a salty crust to crumble over it (Fab Foodie Swede, October 2026).</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-b">Background</span>Hay is the backbone of Alpine farming: it feeds the cattle through winter, and Slovenia's free-standing wooden hayracks, the kozolec, are among the country's most recognisable rural structures. Cooking or smoking food in hay is an old Alpine technique that perfumes food with the scent of dried grass and flowers. The potato itself is the peasant staple of the mountains.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-d">Documented</span>A nearby farm grows the potatoes to Roš's specification. When the farmer quoted “one euro”, Roš assumed it meant a kilo; it turned out to mean one potato (Reporter Gourmet).</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-e">Editorial</span>The humblest crop of the valley is grown and costed like a luxury ingredient and given the same attention a classical kitchen would give a truffle. The hay crust is functional: it seasons and steams at once.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>The dish asks the diner to taste the farming calendar. Hay is last summer's meadow; the potato is this autumn's harvest; the sour cream is the dairy that hay makes possible.</p></div></div>
+    </div>
+  </details>
+
+  <details class="dish">
+    <summary><span class="dn">Trota la regina<small>Item 12 · river fish</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-d">Documented</span>Trout from the tank outside the restaurant, aged for two days and grilled, served with lentils in several textures, herbs and flowers including Malabar spinach and blue borage, and a reduction of vinegar and butter (Reporter Gourmet, October 2026).</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-b">Background</span>The Soča's native fish is the marble trout (<i>Salmo marmoratus</i>), a large predatory trout of the rivers that drain into the Adriatic. Decades of stocking with non-native brown trout led to widespread hybridisation, and genetic surveys found only a handful of pure populations surviving in remote headwater streams of the Soča basin. Local anglers' societies used those fish to restock the river. Fly fishing for these trout is now a pillar of valley tourism.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-c">Official site</span>Hiša Franko says its trout comes from a local fishing family who look after the waters where the marble trout was found again, deep in the valley's gorges, and who help protect it. <span class="ev ev-d">Documented</span>The October 2026 account places the fish in a tank fed by the adjoining stream. Neither source says which species is served; this guide has not been able to confirm whether it is marble trout, brown trout or a farmed hybrid.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-e">Editorial</span>Dry-ageing fish for a couple of days to concentrate flavour and firm the flesh is a recent technique borrowed from contemporary seafood kitchens; it is unusual for a freshwater fish. The lentils and the butter-vinegar sauce are Central European in spirit.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>Of the restaurant's stated suppliers, this one ties the menu most directly to a conservation story. It also leaves the most important question unanswered: which trout are we eating?</p></div></div>
+    </div>
+  </details>
+
+  <details class="dish">
+    <summary><span class="dn">Barley “risotto”<small>Item 11 · grain</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-d">Documented</span>Barley, toasted and then creamed like a risotto, with black pepper, chanterelles and black Istrian truffle. The kitchen uses barley because rice is not grown in Slovenia (Reporter Gourmet). A June visitor ate an orzotto with chanterelles (Plava kamenica).</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-b">Background</span>Pearl barley, ješprenj, is an everyday Slovenian grain, best known in ričet, a thick stew of barley, beans and smoked pork eaten across the country. Risotto belongs to the Venetian and Friulian side of the border, a short drive away.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-b">Background</span>Chanterelles grow in the valley's beech and conifer forests in summer and autumn; the restaurant's forager gathers wild mushrooms each morning. Black truffles come from the Istrian peninsula, shared between Slovenia and Croatia and known for both black and white truffles.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-e">Editorial</span>The dish makes the border edible: an Italian technique applied to a Slovenian peasant grain, finished with a luxury from the Slovenian and Croatian coast.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>It shows the kitchen's rule in practice: when a classic depends on something the region cannot grow, swap in what it can and keep the technique.</p></div></div>
+    </div>
+  </details>
+
+  <details class="dish">
+    <summary><span class="dn">Beeswax<small>Item 15 · final dessert</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-d">Documented</span>An ice cream infused with wax from a local beekeeper, served with a poppy-seed sauce (Reporter Gourmet, October 2026; Plava kamenica, June 2026).</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-b">Background</span>Slovenia is a nation of beekeepers. The Carniolan honeybee (<i>Apis mellifera carnica</i>) is native to the country, and it is the only bee Slovenian law allows beekeepers to keep. In 1770 Empress Maria Theresa appointed Anton Janša, from Upper Carniola, as the first teacher of beekeeping in the Habsburg lands. At Slovenia's initiative the United Nations declared his birthday, 20 May, World Bee Day. Painted panels on the fronts of beehives are a celebrated folk art. Poppy seed belongs to the pastry tradition of Central Europe.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-d">Documented</span>The wax comes from a local producer who is not named in the documented sources.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-e">Editorial</span>Wax is the part of the hive normally thrown away or turned into candles. Infused into dairy, it carries the resinous, floral smell of the comb without the sweetness of honey. That is a modern pastry idea built on the country's most traditional rural craft.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>The meal ends on the one agricultural tradition Slovenia has made an international cause. The dessert tastes of the country's meadows as surely as the hay potato does.</p></div></div>
+    </div>
+  </details>
+
+  <h4>What would you actually order?</h4>
+  <div class="prose"><p><span class="ev ev-e">Editorial</span>There is one menu, and its dishes change. These are the ones to look out for.</p></div>
+  <dl class="order">
+    <div><dt>Three most culturally interesting</dt><dd>The Tolmin cheese brioche, for Alpine dairying; Trota la regina, for the river and its trout; Beeswax, for Slovenian beekeeping.</dd></div>
+    <div><dt>Most representative of the philosophy</dt><dd>Potato and hay: the plainest crop, grown to order and cooked in the valley's own grass.</dd></div>
+    <div><dt>Most unfamiliar to an international diner</dt><dd>Beans, chestnuts and cola: a dessert of pulses and house-made soft drink.</dd></div>
+    <div><dt>Worth researching further</dt><dd>The marble trout restoration in the Soča basin, and which trout the restaurant actually serves.</dd></div>
+  </dl>
+
+  <div class="verified"><b>Last verified 10 November 2026.</b> Michelin status: Slovenian Tourist Board and Government of Slovenia releases, June 2026; Hiša Franko news page. Menu name and price: hisafranko.com/en/our-menu. Dish list: Reporter Gourmet, 5 October 2026. A new menu is due in spring 2027, in line with the restaurant's annual cycle.</div>
+
+  <details class="menu">
+    <summary>Sources for Hiša Franko</summary>
+    <div class="inner">
+      <ol class="sources">
+        <li>Hiša Franko, “Our Menu”, “Our Philosophy” and FAQ. <a href="https://www.hisafranko.com/en/our-menu">hisafranko.com</a>. Accessed 10 Nov 2026.</li>
+        <li>Hiša Franko, “New menu at Hiša Franko: Euphorest” (June 2026). <a href="https://hisafranko.com/en/news/220/new-menu-at-hisa-franko-euphorest">hisafranko.com</a></li>
+        <li>Hiša Franko, “Hiša Franko retained three MICHELIN Stars in the 2026 MICHELIN Guide”. <a href="https://www.hisafranko.com/en/news/221/hisa-franko-retained-three-michelin-stars-in-the-2026-michelin-guide">hisafranko.com</a></li>
+        <li>Slovenian Tourist Board press release (16 Jun 2026). <a href="https://www.slovenia.info/en/press-centre/press-releases/38597-slovenia-celebrates-74-michelin-recognised-restaurants-in-2026-hisa-franko-retains-three-stars-and-milka-two-new-opening-of-the-year-award-introduced">slovenia.info</a></li>
+        <li>Government of Slovenia, “Prestigious Michelin stars awarded to ten Slovenian restaurants” (18 Jun 2026). <a href="https://www.gov.si/en/news/2026-06-18-prestigious-michelin-stars-awarded-to-ten-slovenian-restaurants/">gov.si</a></li>
+        <li>Marco Colognese, Reporter Gourmet, “Ana Roš and Hiša Franko's 3 stars” (5 Oct 2026). <a href="https://reportergourmet.com/en/news/10837-ana-ro-and-hia-frankos-3-stars-we-work-hard-but-theres-a-balance-in-the-kitchen-italians-on-the-team-were-lucky">reportergourmet.com</a></li>
+        <li>Plava kamenica, “Ana Roš novim je menijem Euphorest…” (29 Jun 2026). <a href="https://plavakamenica.hr/2026/06/29/hisa-franko-kobarid-restoran-fine-dining-michelin/">plavakamenica.hr</a></li>
+        <li>Fab Foodie Swede, “Hiša Franko by Ana Roš” (14 Oct 2026). <a href="https://fabfoodieswede.com/2026/10/14/hisa-franko-by-ana-ros-en-3-stjarnig-michelinupplevelse-i-slovenien/">fabfoodieswede.com</a></li>
+        <li>WNF Diary, “Hiša Franko Review” (updated Sep 2026). <a href="https://wnfdiary.com/hisa-franko-review-creations-by-ana-ros">wnfdiary.com</a></li>
+        <li>Google Arts &amp; Culture, Tolminc feature. <a href="https://artsandculture.google.com/story/agVBgcLdOAcA8A">artsandculture.google.com</a></li>
+        <li>RTV Slovenija, “The hills above Tolmin are famous for an age-old cheese”. <a href="https://rtvslo.si/news-in-english/slovenia-revealed/the-hills-above-tolmin-are-famous-for-an-age-old-cheese/349309">rtvslo.si</a></li>
+        <li>Commission Implementing Regulation (EU) No 187/2012, registering Tolminc (PDO), as cited in Acta geographica Slovenica. <a href="https://ojs.zrc-sazu.si/ags/article/view/8746">ojs.zrc-sazu.si</a></li>
+        <li>Berrebi, Jesenšek &amp; Crivelli, “Natural and domestic introgressions in the marble trout population of Soča River”, Hydrobiologia (2017). <a href="https://agris.fao.org/search/en/records/65e009400f3e94b9e5deb04a">FAO AGRIS record</a></li>
+        <li>Kmetijski inštitut Slovenije, Slovenian beekeeping heritage. <a href="https://sca.kis.si/en/?p=19">sca.kis.si</a>; Slovenia.info, World Bee Day. <a href="https://www.slovenia.info/en/stories/celebrate-world-bee-day-with-us">slovenia.info</a></li>
+        <li>Wikipedia, “Hiša Franko” and “Ana Roš”. <a href="https://en.wikipedia.org/wiki/Hi%C5%A1a_Franko">Hiša Franko</a>, <a href="https://en.wikipedia.org/wiki/Ana_Ro%C5%A1">Ana Roš</a></li>
+      </ol>
+    </div>
+  </details>
+</article>
+
+<!-- ===================== LEVADURA DE OLLA ===================== -->
+<article class="inv" id="r-levadura">
+  <div class="inv-top">
+    <div class="inv-num" aria-hidden="true">11</div>
+    <div>
+      <h3>Levadura de Olla</h3>
+      <p class="where">Centro Histórico, Oaxaca de Juárez · Mexico · Sierra Sur of Oaxaca</p>
+    </div>
+  </div>
+
+  <dl class="facts">
+    <div><dt>Michelin status</dt><dd><span class="st">★</span> MICHELIN Guide Mexico 2026 (one star since the first Mexico guide in 2024). Kept below the two-star floor as an editorial exception.</dd></div>
+    <div><dt>Leadership</dt><dd>Thalía Barrios García, chef and co-owner (MICHELIN Young Chef Award, Mexico 2024); Jesús Neftalí Ramos Vargas, co-owner</dd></div>
+    <div><dt>Format</dt><dd>À la carte, published in full with prices. Diners also report a seven-course tasting menu, which is not published.</dd></div>
+    <div><dt>Price</dt><dd>Savoury dishes MXN 190–465; desserts MXN 170–205; house drinks from MXN 65 (official menu, October 2026).</dd></div>
+    <div><dt>Menu used here</dt><dd>Official Spanish and English menus, levaduradeolla.mx, last modified 23 October 2026.</dd></div>
+    <div><dt>Website</dt><dd><a href="https://levaduradeolla.mx/menu-en/">levaduradeolla.mx</a></dd></div>
+  </dl>
+
+  <p class="lede">The name means “claypot yeast”, after the ferment women in Thalía Barrios García's mountain village use to bake bread in clay pots. Her restaurant sorts its menu by the social life of each dish: everyday food, food that is disappearing, and food made only for weddings, saints' days and funerals.</p>
+
+  <h4>Why Levadura de Olla is in this atlas</h4>
+  <div class="prose">
+    <p><span class="ev ev-e">Editorial</span>Mexico's two two-star restaurants are both in the capital. Levadura de Olla was kept as an exception to this guide's two-star floor because no other starred kitchen in the country builds its menu as ethnography. Its sections tell you how a dish is used in community life before they tell you what is in it, and much of what it serves comes from one village of about 3,000 people in the Sierra Sur. Of the three restaurants investigated so far, it is the only one that publishes its whole menu with prices on its own website.</p>
+  </div>
+
+  <h4>Mexico, and Oaxaca within it</h4>
+  <div class="prose">
+    <p><span class="ev ev-b">Background</span>Maize was domesticated in southern Mexico thousands of years ago, and Mexican cooking still runs on it: tortillas, tamales, atoles, and moles thickened with masa. Masa is maize dough made by nixtamalisation, cooking the grain with lime to loosen the hull and improve its nutritional value. Beans, squash and chillies grow alongside the corn in the milpa, the shared field, together with the wild greens known as quelites. Spain brought pork, chicken, cattle, dairy, wheat and spices from its Asian trade, and much of what the world calls Mexican cooking is the result of combining them. In 2010 UNESCO inscribed traditional Mexican cuisine on its list of intangible cultural heritage.</p>
+    <p><span class="ev ev-b">Background</span>Regional difference is enormous. The north eats wheat flour tortillas and beef; Yucatán cooks with Maya spice pastes and achiote; Puebla built mole poblano. Oaxaca, in the south, is the most diverse of all. The state has eight official regions and more Indigenous languages than any other in Mexico, including Zapotec, Mixtec, Mixe and Chatino. Its markets sell grasshoppers, dozens of chillies found nowhere else, and the moles that have made the capital a destination. The tourist phrase “land of the seven moles” flattens this: every village has its own version.</p>
+    <p><span class="ev ev-b">Background</span>Contemporary Mexican fine dining was long centred on Mexico City, where Pujol and Quintonil hold two stars each. Michelin's arrival in 2024 recognised Oaxaca separately, and Levadura de Olla was among its first starred restaurants. Its chef also won the guide's national Young Chef Award that year.</p>
+  </div>
+
+  <h4>The restaurant</h4>
+  <div class="prose">
+    <h5>Philosophy</h5>
+    <p><span class="ev ev-c">Official site</span>The menu opens with a principle: every dish has the same value and none is less important, because each technique and ingredient has its own history. It adds that, as in Oaxaca's villages, no good meal exists without a real tortilla, a hot salsa and well-seasoned beans. The restaurant describes itself as an “infinite library” of Oaxacan food, built by researching the markets and cooking habits of remote villages.</p>
+    <p><span class="ev ev-d">Documented</span>Barrios García has said that being born a woman in San Mateo meant being expected to learn to cook, and that meat is scarce there because of the village's location and the lack of refrigeration; vegetables lead most of her dishes for that reason (Culinary Backstreets). She studied gastronomy at university in Oaxaca and has said the training felt too Westernised compared with the cooking she grew up with (MexicoTrip).</p>
+
+    <h5>The geography of its food</h5>
+    <p><span class="ev ev-b">Background</span>San Mateo Yucutindoó is a mountain municipality in the Sola de Vega district of the Sierra Sur, the range between the Central Valleys and the Pacific coast, with a population of 3,144 in the 2020 census. <span class="ev ev-c">Official site</span>The restaurant says the village's fields remain largely free of pesticides, and that its native crops and wild harvests are watered only by rain. In the community of Pueblo Viejo the team keeps its own milpa with maize, several kinds of bean, squash, nopal cactus and the ixtle maguey used for rope. Beyond the village, the menu reaches into most of Oaxaca's regions: Pacific fish, quelites from the Mixteca, drinks from the Isthmus and the Sierra Norte.</p>
+
+    <h5>Cultural context</h5>
+    <p><span class="ev ev-c">Official site</span>The research pages are a record of village food life: Señora Celedonia serving mole de fiesta at a celebration; tamales reheated on the comal the day after a fiesta; the technique of trimming and soaking corn husks so the dough can be spread thinly. <span class="ev ev-e">Editorial</span>This is a restaurant preserving an older tradition, and in doing so it challenges the idea that Oaxacan food means the moles of the Central Valleys. Its best-known mole has no chocolate and no seeds.</p>
+
+    <h5>Techniques</h5>
+    <p><span class="ev ev-c">Confirmed menu</span>The menu names comal cooking, charring (tatemado) of chillies, moles thickened with masa or cracked corn, dried pozole, confit, and fermentation in the house tepaches. River-stone molcajetes (mortars) are listed among the restaurant's tools. <span class="ev ev-d">Documented</span>Writers who have eaten here note that the seasoning revolves around smoke and an aromatic, gentle spiciness (Culinary Backstreets). Barrios García's second restaurant nearby, La Cocina de Humo, cooks round a comal at shared tables with a fixed menu.</p>
+
+    <h5>People and producers</h5>
+    <p><span class="ev ev-c">Official site</span>This is the most transparent sourcing in the pilot. The restaurant names Señora Sixta Sarmiento of San Mateo, who makes 40-centimetre tostadas from blue maize from her own milpa for the restaurant; Señora Celedonia, who grows three local maize varieties, magueyano, olotón and tatanano; and Señora Rosa Sarmiento, who bakes the village's pan del bueno. The drinks list credits each maker: José Luis Toledo Morales for taberna palm wine from Unión Hidalgo; Rosalba Aquino Bautista for pozontle from the Sierra Norte; Hermilo Ayala Coronel for ticunchi from the Mixteca; Lesly Yesenia Cruz González and Javier Meza López for kalanca; Juan Carlos Hernández Cruz for pulque from Santiago Ixtaltepec.</p>
+
+    <h5>The dining experience</h5>
+    <p><span class="ev ev-d">Documented</span>The restaurant fills the courtyard of a colonial house on García Vigil. Visitors pass a “tomato room”, a table laid with hundreds of Oaxacan tomatoes of every colour and shape (Atlas Obscura, 2025). Food arrives on earthenware, and the drinks list leans on Indigenous ferments and mezcals from named agave species (TripAdvisor reviews, 2026). <span class="ev ev-c">Official site</span>Tables are booked by seating: 4pm and 7pm on Tuesdays, and 1pm, 4pm and 7pm Wednesday to Saturday.</p>
+
+    <h5>What makes it worth a star</h5>
+    <p><span class="ev ev-e">Editorial</span>The inspectors' own note praises the shaded courtyard and a grilled squash with white pipián and spearmint. The deeper achievement is editorial: a menu that teaches the diner how food functions in a community, with dishes priced in the hundreds of pesos. Technical polish is less obvious here than at Sorn or Hiša Franko, and some diners say so. One August 2026 review found the tasting menu educational but below what it expected of a starred kitchen. That is the trade-off of cooking village food without dressing it up.</p>
+  </div>
+
+  <h4>The menu</h4>
+  <div class="prose">
+    <p><span class="ev ev-c">Confirmed menu</span>Reproduced in full from the restaurant's Spanish and English menus, last modified 23 October 2026. The original Spanish appears first, with the restaurant's own English beneath it. Prices are in Mexican pesos. The drinks list is abridged to the Oaxacan Indigenous drinks; the full list of mezcals, beers and cocktails is on the restaurant's site.</p>
+  </div>
+
+  <details class="menu" open>
+    <summary>Menú, autumn 2026 (levaduradeolla.mx, modified 23 October 2026)</summary>
+    <div class="inner tablewrap">
+      <table class="menutab">
+        <thead><tr><th>Section</th><th>Dish (Spanish original / restaurant's English)</th><th>Description as printed</th><th>MXN</th></tr></thead>
+        <tbody>
+          <tr class="sec"><td colspan="4">Platillos Típicos Oaxaqueños — popular dishes known across the state</td></tr>
+          <tr><td class="pos">Typical</td><td class="orig">Guacamole y variedad de aguacates, piedra, manteca y aguacatillo; con puntas de cilantro<span class="tr">Guacamole with endemic avocados (piedra, manteca and aguacatillo) with coriander sprigs</span></td><td>Crushed avocado, jalapeño, lime, coriander, salt; served with piedra, manteca and aguacatillo avocados and blue-corn tostadas</td><td class="price">295</td></tr>
+          <tr><td class="pos">Typical</td><td class="orig">Taco de tasajo encebollado, papa de la sierra con chile de agua, salsa de chapulín y quesillo<span class="tr">Beef tasajo and onion taco, potato from the Sierra with chile de agua, grasshopper sauce, and Oaxacan string cheese</span></td><td>No further description</td><td class="price">335</td></tr>
+          <tr><td class="pos">Typical</td><td class="orig">Sopa de elote, quelites y flores<span class="tr">Corn soup, quelite (wild greens) and flowers</span></td><td>Assorted quelites (stems, tender leaves, wild edible flowers), thickened with corn kernels</td><td class="price">190</td></tr>
+          <tr class="sec"><td colspan="4">Platillos Oaxaqueños de Salvaguarda — dishes rarely found outside their home regions</td></tr>
+          <tr><td class="pos">Safeguard</td><td class="orig">Tamal de barbacollita (maíz quebrajado, pollo, puerco, chiles, hoja de aguacate y especias)<span class="tr">Barbacollita tamal (cracked corn, chicken, pork, chillies, avocado leaf, and spices)</span></td><td>Cracked-corn tamal with pork, chicken and an adobo of puya and guajillo chillies and avocado leaf</td><td class="price">285</td></tr>
+          <tr class="sec"><td colspan="4">Platillos Ceremoniales — made for patron saints' days, weddings or funerals</td></tr>
+          <tr><td class="pos">Ceremonial</td><td class="orig">Tacos de hongos de la montaña, hierba santa, quesillo, miltomate y guacachile<span class="tr">Mountain mushroom tacos, hoja santa, Oaxacan string cheese, green tomatillo, and guacachile</span></td><td>Wild mushrooms stewed with hoja santa in comal tortillas</td><td class="price">360</td></tr>
+          <tr><td class="pos">Ceremonial</td><td class="orig">Plato de calabacitas (wicha y chilacayota), pipián blanco y hierbabuena<span class="tr">Wicha and chilacayota squash plate, served with white pipián sauce and spearmint</span></td><td>Pipián of cauliflower and cooked green chillies, with wicha and chilacayota squash sautéed with spearmint</td><td class="price">365</td></tr>
+          <tr><td class="pos">Ceremonial</td><td class="orig">Mole de fiesta tradicional de San Mateo Yucutindoó, muslo de pollo, pozole seco con hierba santa<span class="tr">Traditional mole de fiesta from San Mateo Yucutindoó, chicken thigh and dried pozole with hoja santa</span></td><td>Sierra Sur mole of ancho and guajillo chillies and spices, thickened with masa; chicken; dried pozole with hoja santa. Slightly spicy; no seeds, no chocolate.</td><td class="price">360</td></tr>
+          <tr class="sec"><td colspan="4">Propuesta Creativa de Levadura de Olla — the kitchen's own dishes</td></tr>
+          <tr><td class="pos">Creative</td><td class="orig">Jitomates nativos Oaxaqueños, puré de betabel y vinagreta de frutas<span class="tr">Oaxacan native tomatoes, beetroot purée and fruit vinaigrette</span></td><td>Assorted native tomatoes on beetroot purée with fruit vinaigrette and quelites</td><td class="price">370</td></tr>
+          <tr><td class="pos">Creative</td><td class="orig">Tamal de requesón, flor de calabaza, acompañado de mole negro y coloradito<span class="tr">Requesón tamal, squash blossom, mole negro and coloradito mole sauce</span></td><td>Maize and requesón dough with butter and spices; mole negro, coloradito, dried-cheese powder, coriander, squash blossom</td><td class="price">315</td></tr>
+          <tr><td class="pos">Creative</td><td class="orig">Pesca del Pacífico, cacayas (flores de maguey) y pipián rojo con granillo de maíz<span class="tr">Catch from the Pacific coast, agave flower and red pipián with corn kernels</span></td><td>Fish with a red mole of squash seeds and charred chillies, thickened with cracked corn; agave flowers sautéed with onion and red jalapeño</td><td class="price">455</td></tr>
+          <tr><td class="pos">Creative</td><td class="orig">Costilla de puerco confitada, pasta de frijol con hoja de aguacate, salsa de chiles secos, verduras encurtidas, mayonesa de ajo y cilantro<span class="tr">Confit pork rib, bean paste made with avocado leaf, dried chilli sauce, pickled vegetables, garlic mayonnaise, coriander</span></td><td>Pork rib confit with coriander seed, thyme and garlic, on bean paste. The English version adds chochoyote corn dumplings.</td><td class="price">415</td></tr>
+          <tr><td class="pos">Creative</td><td class="orig">Mole de guayaba, camarones, coliflor capeada y quelites de la Mixteca<span class="tr">Guava mole sauce, shrimp, battered cauliflower and quelites (wild greens) from the Mixteca</span></td><td>House mole of endemic Oaxacan chillies and seeds; sautéed prawns, battered cauliflower, Mixteca quelites</td><td class="price">465</td></tr>
+          <tr class="sec"><td colspan="4">Postres — desserts</td></tr>
+          <tr><td class="pos">Dessert</td><td class="orig">Nicuatole<span class="tr">Nicuatole</span></td><td>Maize and burnt-milk dessert with red prickly-pear granita from San Martín Lachilá</td><td class="price">185</td></tr>
+          <tr><td class="pos">Dessert</td><td class="orig">Panqué de elote<span class="tr">Corn bread</span></td><td>Topped with mango, honey and lime compote; rosita de cacao cream</td><td class="price">190</td></tr>
+          <tr><td class="pos">Dessert</td><td class="orig">Chocolate<span class="tr">Chocolate</span></td><td>70% cacao chocolate, roasted plantain purée, fresh plantain, mezcal syrup</td><td class="price">205</td></tr>
+          <tr><td class="pos">Dessert</td><td class="orig">Nopal &amp; Cedrón<span class="tr">Nopal cactus and lemon verbena</span></td><td>Cured nopal de cruz, charred nopal de castilla compote, nopal gordo with fruit vinegar, raw nopal, lemon verbena granita</td><td class="price">170</td></tr>
+          <tr><td class="pos">Dessert</td><td class="orig">Raspado de poleo<span class="tr">Poleo sorbet</span></td><td>Shaved ice of poleo (a wild mint) with fresh mango, mango syrup, mango coulis, coconut foam</td><td class="price">195</td></tr>
+          <tr><td class="pos">Dessert</td><td class="orig">Flan de calabaza támala<span class="tr">Butternut squash flan</span></td><td>Flan of támala squash, squash and marigold (cempasúchil) foam, pepitoria seed brittle</td><td class="price">195</td></tr>
+          <tr class="sec"><td colspan="4">Bebidas Étnicas Oaxaqueñas — Oaxacan Indigenous drinks (abridged)</td></tr>
+          <tr><td class="pos">Drink</td><td class="orig">Agua de maíz<span class="tr">Corn water</span></td><td>Toasted, hand-milled maize; “not atole, not tejate”</td><td class="price">90</td></tr>
+          <tr><td class="pos">Drink</td><td class="orig">Agua de semillas reventadas<span class="tr">Popped corn and sorghum water</span></td><td>Popcorn maize and sorghum burst on the comal</td><td class="price">95</td></tr>
+          <tr><td class="pos">Drink</td><td class="orig">Agua de taberna<span class="tr">Taberna water</span></td><td>Fermented sap of the coyul palm from Unión Hidalgo, also called pulque de palmilla. Maker: José Luis Toledo Morales.</td><td class="price">115</td></tr>
+          <tr><td class="pos">Drink</td><td class="orig">Pozontle</td><td>Foamy cacao drink of the Sierra Norte with panela and cocolmeca. Maker: Rosalba Aquino Bautista.</td><td class="price">125</td></tr>
+          <tr><td class="pos">Drink</td><td class="orig">Ticunchi (jugo de agave)</td><td>Juice of the papalometl agave heart with coyul clover quelite, pink and tamarind-like. Mixteca. Maker: Hermilo Ayala Coronel.</td><td class="price">95</td></tr>
+          <tr><td class="pos">Drink</td><td class="orig">Kalanca</td><td>Spirit of cajete maize and kalanca, a medicinal plant of the Chocholteca region. Makers: Lesly Yesenia Cruz González, Javier Meza López.</td><td class="price">160</td></tr>
+          <tr><td class="pos">Drink</td><td class="orig">Pulque</td><td>Fermented agave sap, 2–4% alcohol, from Santiago Ixtaltepec in the Mixteca. Maker: Juan Carlos Hernández Cruz.</td><td class="price">110</td></tr>
+          <tr><td class="pos">Drink</td><td class="orig">Enjambre</td><td>Pulque fermented with honey and honeycomb, also called tepache de enjambre. Mixteca.</td><td class="price">135</td></tr>
+          <tr><td class="pos">Drink</td><td class="orig">Tepache de piña / de guayaba</td><td>House ferments of pineapple and honey, or guava</td><td class="price">125</td></tr>
+        </tbody>
+      </table>
+      <p class="sans" style="font-size:.82rem;color:var(--ink-soft);margin-top:.8rem">The site shows the Indigenous drinks twice, at two price levels (for example, corn water at MXN 90 and 105); it does not say why. The lower prices are given here. Kalanca, pulque and enjambre appear only in the second list. The restaurant's home page also shows a chicatana ant salsa with pork and refried beans that is not on the current menu.</p>
+    </div>
+  </details>
+
+  <h4>Five dishes, read closely</h4>
+
+  <details class="dish">
+    <summary><span class="dn">Mole de fiesta tradicional de San Mateo Yucutindoó<small>Ceremonial · MXN 360</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-c">Confirmed menu</span>A red mole of ancho and guajillo chillies and spices, thickened with masa, served with a chicken thigh and dried pozole maize cooked with hoja santa. The menu warns that it is slightly spicy and contains no seeds and no chocolate.</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-c">Official site</span>In San Mateo this mole is served with chicken at special celebrations and ceremonies, always with the dried pozole. The research pages show Señora Celedonia serving it at a village fiesta. <span class="ev ev-b">Background</span>Mole is a feast food across Mexico, cooked in quantity by the families who sponsor a saint's day or a wedding. The well-known Oaxacan moles of the Central Valleys, mole negro above all, use dozens of ingredients including seeds, nuts, dried fruit and chocolate.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-b">Background</span>Ancho is dried poblano; guajillo is dried mirasol. Both are trade chillies sold throughout Mexico. Pozole maize is a large-kernelled white corn. Hoja santa (<i>Piper auritum</i>) is a broad, anise-scented leaf used across southern Mexico. Thickening the mole with masa makes it a maize dish at heart.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-e">Editorial</span>As far as can be told, this is presented as the village version, without improvement. Its interpretation is the act of placing it on a starred menu under a heading that explains its social role.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>A diner expecting Oaxacan mole to be dark, sweet and chocolate-rich will meet a lean, brick-red sauce. The surprise is the lesson: there are as many moles as there are villages, and the one sold to tourists is only one of them.</p></div></div>
+    </div>
+  </details>
+
+  <details class="dish">
+    <summary><span class="dn">Tamal de barbacollita<small>Safeguard · MXN 285</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-c">Confirmed menu</span>A tamal of cracked maize (maíz quebrajado) with pork and chicken in an adobo of puya and guajillo chillies and avocado leaf.</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-c">Official site</span>It sits in the “safeguard” section: dishes little known outside their region of origin. The research pages describe San Mateo's distinctive tamal technique. The base of the dried corn husk (totomoxtle) is cut off and the husks soaked, so they soften and lose their small prickles; the dough is then spread in a thin layer. After a fiesta the leftover tamales are reheated on the comal for the next day's lunch. <span class="ev ev-b">Background</span>The tamal is among the oldest foods of Mesoamerica, and its forms vary from village to village.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-b">Background</span>Cracked maize gives a coarser, grainier tamal than smooth masa. The leaves of native Mexican avocado trees carry an anise-like aroma and are a classic seasoning for barbacoa, beans and tamales in southern and central Mexico.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-e">Editorial</span>The kitchen preserves the dish and documents it. Its contribution is the classification: the recipe itself is left as San Mateo cooks it.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>“Safeguard” is a strong word. It tells the diner that the dish is at risk, and that ordering it is a small act of keeping it alive.</p></div></div>
+    </div>
+  </details>
+
+  <details class="dish">
+    <summary><span class="dn">Tamal de requesón, flor de calabaza, mole negro y coloradito<small>Creative · MXN 315</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-c">Confirmed menu</span>A tamal of maize dough mixed with requesón (fresh curd cheese), butter and spices, served with two moles, negro and coloradito, a dusting of dried cheese, coriander and a squash blossom. <span class="ev ev-d">Documented</span>The Michelin inspectors cite a version of this tamal and note that Barrios García learned her tamales from her grandmother; Atlas Obscura's writer called it the most delicious thing on the menu (2025).</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-b">Background</span>Mole negro and coloradito are two of Oaxaca's canonical festive moles, the first dark with burnt chillies and chocolate, the second brick-red and sweeter. Requesón and butter are colonial additions to a pre-Hispanic form.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-c">Official site</span>The squash blossoms are male flowers: the restaurant's research notes explain that growers pick the males for eating and leave the females in the milpa to set squash, and that the flowers cannot be kept for more than a day.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-e">Editorial</span>Two festive moles on a single meatless tamal is a chef's composition. In a village they would belong to different occasions. It is filed under “creative” for that reason, and the restaurant is careful to say so.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>It shows the line the menu draws between documenting a tradition and departing from it, and it lets a newcomer taste the two moles side by side.</p></div></div>
+    </div>
+  </details>
+
+  <details class="dish">
+    <summary><span class="dn">Jitomates nativos oaxaqueños<small>Creative · MXN 370</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-c">Confirmed menu</span>An assortment of Oaxacan native tomatoes on beetroot purée, with a fruit vinaigrette and quelites. <span class="ev ev-d">Documented</span>The World's 50 Best calls it the chef's signature dish, and visitors pass a room laid with hundreds of native tomatoes on the way in (Atlas Obscura).</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-b">Background</span>The tomato was domesticated in Mesoamerica; the English word comes from Nahuatl <i>tomatl</i>. Mexico's markets still sell landrace tomatoes in shapes and colours that never reached supermarkets elsewhere.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-c">Official site</span>The menu says only “native Oaxacan”. The restaurant's stated sources are the rain-fed fields of San Mateo and markets across the state; individual growers are not named for this dish.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-e">Editorial</span>A plate of raw tomatoes works almost as a seed-bank display. The cooking is minimal so that the varieties can be compared.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>Diners from elsewhere think of the tomato as Italian. This dish returns it to its home and shows how much diversity was lost when a few varieties went global.</p></div></div>
+    </div>
+  </details>
+
+  <details class="dish">
+    <summary><span class="dn">Nicuatole<small>Dessert · MXN 185</small></span></summary>
+    <div class="dbody">
+      <div class="q"><b>A</b><div><h6>What it is</h6><p><span class="ev ev-c">Confirmed menu</span>A maize and burnt-milk dessert served with a granita of red prickly pear from San Martín Lachilá.</p></div></div>
+      <div class="q"><b>B</b><div><h6>Cultural and historical significance</h6><p><span class="ev ev-b">Background</span>Nicuatole is a set maize pudding associated with the Zapotec people and widely described as pre-Hispanic in origin. In its basic form it is maize, water, cinnamon and sugar or piloncillo, often streaked with red from cochineal (México Desconocido). In July 2024 Oaxaca's state congress declared it part of the state's intangible cultural heritage (Prensa Latina). San Agustín Yatareni holds an annual nicuatole and maize fair.</p></div></div>
+      <div class="q"><b>C</b><div><h6>Ingredient provenance</h6><p><span class="ev ev-c">Confirmed menu</span>The prickly pear is credited to San Martín Lachilá, a village in the Central Valleys. <span class="ev ev-b">Background</span>Burnt milk, leche quemada, is a famous Oaxacan ice-cream flavour; milk itself arrived with the Spanish.</p></div></div>
+      <div class="q"><b>D</b><div><h6>The chef's interpretation</h6><p><span class="ev ev-e">Editorial</span>The kitchen pairs a pre-Hispanic maize sweet with the caramelised dairy of the colonial period and a cactus fruit. Three eras of Oaxacan food end up on one plate.</p></div></div>
+      <div class="q"><b>E</b><div><h6>Why it matters</h6><p><span class="ev ev-e">Editorial</span>It is the clearest example of maize as sweet food, which most visitors never encounter, and a dessert the state now treats as heritage.</p></div></div>
+    </div>
+  </details>
+
+  <h4>What would you actually order?</h4>
+  <dl class="order">
+    <div><dt>Three most culturally interesting</dt><dd>Mole de fiesta of San Mateo, for its absence of chocolate; tamal de barbacollita, for the village tamal technique; nicuatole, maize as dessert.</dd></div>
+    <div><dt>Most representative of the philosophy</dt><dd>The squash plate with white pipián and spearmint: a vegetable dish with ceremonial standing, and the one Michelin's inspectors singled out.</dd></div>
+    <div><dt>Most unfamiliar to an international diner</dt><dd>Agua de taberna, fermented coyul palm sap from the Isthmus, credited to its maker.</dd></div>
+    <div><dt>Worth researching further</dt><dd>Quelites: Mexico eats about 250 species of wild and semi-wild greens, and their use is declining.</dd></div>
+  </dl>
+
+  <div class="verified"><b>Last verified 10 November 2026.</b> Michelin status: 2026 Mexico list as reported by SDP Noticias and others, after the ceremony in Guadalajara on 20 May 2026; Michelin restaurant page. Menu: levaduradeolla.mx, Spanish and English pages modified 23 October 2026.</div>
+
+  <details class="menu">
+    <summary>Sources for Levadura de Olla</summary>
+    <div class="inner">
+      <ol class="sources">
+        <li>Levadura de Olla, menu (English and Spanish), restaurant and research pages. <a href="https://levaduradeolla.mx/menu-en/">levaduradeolla.mx/menu-en</a>; <a href="https://levaduradeolla.mx/menu/">/menu</a>; <a href="https://levaduradeolla.mx/investigacion/">/investigacion</a>. Accessed 10 Nov 2026.</li>
+        <li>MICHELIN Guide, Levadura de Olla Restaurante. <a href="https://guide.michelin.com/us/en/oaxaca/oaxaca-de-juarez_2056768/restaurant/levadura-de-olla-restaurante">guide.michelin.com</a></li>
+        <li>SDP Noticias, “Restaurantes con estrellas Michelin en México: lista por ciudad” (2026). <a href="https://www.sdpnoticias.com/negocios/restaurantes-con-estrellas-michelin-en-mexico-lista-por-ciudad/">sdpnoticias.com</a></li>
+        <li>Gastrolab, “7 restaurantes mexicanos ganan su primera Estrella Michelin” (20 May 2026). <a href="https://www.gastrolabweb.com/tendencias/2026/5/20/restaurantes-mexicanos-ganan-su-primera-estrella-michelin-lista-completa-2026-67699.html">gastrolabweb.com</a></li>
+        <li>The World's 50 Best, Latin America: Levadura de Olla. <a href="https://www.theworlds50best.com/latinamerica/en/the-list/Levadura-de-Olla.html">theworlds50best.com</a></li>
+        <li>Culinary Backstreets, profile of Thalía Barrios García. <a href="https://culinarybackstreets.com/?p=51082">culinarybackstreets.com</a></li>
+        <li>Atlas Obscura / Gastro Obscura, “Levadura de Olla” (21 Mar 2025). <a href="https://www.atlasobscura.com/places/levadura-de-olla">atlasobscura.com</a></li>
+        <li>MexicoTrip, “Levadura de Olla y Thalía Barrios”. <a href="https://mexicotrip.mx/levadura-de-olla-y-thalia-barrios-el-arte-culinario-mas-autentico">mexicotrip.mx</a></li>
+        <li>Data México, San Mateo Yucutindoo (2020 census). <a href="https://www.economia.gob.mx/datamexico/en/profile/geo/san-mateo-yucutindoo">economia.gob.mx</a></li>
+        <li>México Desconocido, “Nicuatole”. <a href="https://www.mexicodesconocido.com.mx/nicuatole.html">mexicodesconocido.com.mx</a>; Prensa Latina, “Postre mexicano declarado patrimonio cultural e inmaterial de Oaxaca” (28 Jul 2024). <a href="https://www.prensa-latina.cu/2024/07/28/postre-mexicano-declarado-patrimonio-cultural-e-inmaterial-de-oaxaca/">prensa-latina.cu</a></li>
+        <li>Sánchez-Ramos et al., “Preserving Healthy Eating Habits: Quelites in the Food System of a Nahua Mountain Community” (Springer, 2022), citing Basurto (2011) on c. 250 species. <a href="https://link.springer.com/chapter/10.1007/978-3-030-99357-3_12">link.springer.com</a></li>
+        <li>TripAdvisor reviews of Levadura de Olla, March and August 2026. <a href="https://www.tripadvisor.com/Restaurant_Review-g150801-d20051676-Reviews-Levadura_de_Olla_Restaurante-Oaxaca_Southern_Mexico.html">tripadvisor.com</a></li>
+      </ol>
+    </div>
+  </details>
+</article>
+
+      </div><!-- /inv-list -->
+    </div>
+  </div>
+</section>
+
+<section class="block" id="ingredients">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Global ingredient index</h2>
+      <p>The ingredients that do the most work on the three published menus. The index grows as each investigation is added; the target for the finished atlas is 20 to 30 entries drawn from all fifteen. Select an entry to open it.</p>
+    </div>
+    <div class="idx-tools">
+      <input id="iq" type="search" placeholder="Search ingredients" aria-label="Search ingredients">
+      <select id="ir" aria-label="Filter by restaurant"><option value="">All restaurants</option></select>
+      <span id="icount" class="sans" style="align-self:center;color:var(--ink-soft)"></span>
+    </div>
+    <div class="ingr" id="ingrlist"></div>
+  </div>
+</section>
+
+<section class="block" id="techniques">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Culinary techniques</h2>
+      <p>Methods that appear on the published menus, what they involve and why these kitchens use them.</p>
+    </div>
+    <div class="tech" id="techlist"></div>
+  </div>
+</section>
+
+<section class="block" id="tradition">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Tradition and innovation</h2>
+      <p>Where each published restaurant preserves, revives, modernises or challenges. Examples come from the dishes investigated above.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th style="width:18%">Move</th><th>Sorn</th><th>Hiša Franko</th><th>Levadura de Olla</th></tr></thead>
+        <tbody>
+          <tr><td><b>Preserves a traditional recipe</b></td><td>Khao yam and its budu dressing, on the menu unchanged in concept since 2018</td><td>Little preserved as recipes; preserves practices such as Alpine cheese and hay</td><td>Mole de fiesta of San Mateo, served as the village makes it</td></tr>
+          <tr><td><b>Revives an overlooked ingredient</b></td><td>Budu, a regional ferment little used in Bangkok fine dining</td><td>Marble-trout country, though the species served is unconfirmed</td><td>Quelites, native tomatoes and village maize varieties named by grower</td></tr>
+          <tr><td><b>Modernises a familiar dish</b></td><td>Crab leg with roe and chilli paste, made to hold without stabilisers</td><td>Barley cooked as risotto; beeswax as ice cream</td><td>Requesón tamal with two festive moles</td></tr>
+          <tr><td><b>Challenges the national cuisine</b></td><td>Puts the Malay Muslim south and Hokkien Phuket at the top of Thai dining</td><td>Defines Slovenian food by valley and season instead of national dishes</td><td>Argues that “Oaxacan” covers hundreds of village cuisines beyond the famous moles</td></tr>
+          <tr><td><b>Joins old technique to new</b></td><td>Pestle-pounded paste engineered for a precise texture</td><td>Hay-crust baking beside dry-aged river fish</td><td>Masa-thickened moles beside confit and emulsions</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="connections">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Unexpected connections</h2>
+      <p>Patterns that show up across countries with no shared history. These are this guide's readings, drawn from the three published investigations, and will be tested as the other twelve are added.</p>
+    </div>
+    <div class="conn">
+      <article>
+        <h3>The stone in the kitchen</h3>
+        <p class="between">Sorn · Levadura de Olla</p>
+        <p><span class="ev ev-e">Editorial</span>Both restaurants make the grinding stone visible. Sorn pounds its chilli pastes in pestle and mortar, using three distinct techniques for one dish, and serves its crab course in a small granite mortar. Levadura de Olla lists river-stone molcajetes among its tools. In both cuisines the texture of a sauce depends on stone. A blender shears ingredients, while a mortar crushes them and releases oils, which is why both kitchens keep doing it by hand.</p>
+      </article>
+      <article>
+        <h3>The grain is the meal</h3>
+        <p class="between">Sorn · Levadura de Olla · Hiša Franko</p>
+        <p><span class="ev ev-e">Editorial</span>Sorn heads its sides “with rice” and steams that rice in water from a named province. Levadura de Olla's menu begins by saying that no meal exists without a real tortilla. Hiša Franko cooks barley like risotto because rice will not grow in Slovenia. Three kitchens on three continents treat the staple grain as the thing every other dish exists to accompany, even at the luxury end of dining.</p>
+      </article>
+      <article>
+        <h3>Ferments from the margins</h3>
+        <p class="between">Sorn · Levadura de Olla · Hiša Franko</p>
+        <p><span class="ev ev-e">Editorial</span>Budu comes from the Malay Muslim border provinces of Thailand. Taberna palm wine, pulque and ticunchi come from the Isthmus and the Mixteca, and each is credited to a named maker. Hiša Franko's non-alcoholic pairing is built on house ferments and kombucha. In each case fermentation carries the identity of a community that sits at the edge of the national food story, and the restaurant brings it to the centre.</p>
+      </article>
+      <article>
+        <h3>Taught by grandmothers, or by nobody</h3>
+        <p class="between">Sorn · Levadura de Olla · Hiša Franko</p>
+        <p><span class="ev ev-e">Editorial</span>Jongsiri has said he learned from his grandmother and never went to culinary school. Roš is self-taught. Barrios García did study gastronomy, and found it too Westernised for the food she grew up with; the inspectors credit her tamales to her grandmother. Two of three top-rated chefs here learned outside the classical system, and the third had to unlearn part of it.</p>
+      </article>
+      <article>
+        <h3>Rivers as provenance</h3>
+        <p class="between">Sorn · Hiša Franko</p>
+        <p><span class="ev ev-e">Editorial</span>Sorn's menu names the Tapi River on its first line. Hiša Franko's trout comes from a tank fed by a Soča tributary. Both use a river as a guarantee of place in the way wine uses a vineyard. In the Soča's case the guarantee is fragile: its native trout was nearly lost to decades of stocking with non-native fish.</p>
+      </article>
+      <article>
+        <h3>What fills the role of dairy</h3>
+        <p class="between">Sorn · Hiša Franko · Levadura de Olla</p>
+        <p><span class="ev ev-e">Editorial</span>Hiša Franko cannot serve a dairy-free guest; milk runs through the whole menu. Levadura de Olla uses requesón, quesillo and burnt milk, all colonial arrivals layered onto a maize base. Sorn's richness comes from coconut: milk, cream, meat and shoots appear in nearly every section. Each kitchen's fat says something about its landscape and its history of contact.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="perspective">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>What these menus reveal</h2>
+      <p>A provisional reading, written after the first three investigations. It will be rewritten when all fifteen are complete.</p>
+    </div>
+    <div class="prose essay">
+      <p>The most striking thing about these three menus is how little they rely on the conventions that once defined the Michelin restaurant. None is French or French-derived. Only one is a classic tasting menu in the European sense, and even that one, Hiša Franko, refuses to fix its dishes long enough to print them. Sorn breaks its meal halfway through to become a shared Thai table. Levadura de Olla publishes every dish with its price and arranges them by when a village would eat them.</p>
+      <p>What they share is a claim about scale. Each argues that the meaningful unit of a cuisine is smaller than the nation: a peninsula and its fourteen provinces, a valley under the Julian Alps, a village of three thousand people in the Sierra Sur. National cuisines, in this view, are federations, and the most interesting cooking happens where the parts meet: Malay and Thai, Alpine and Friulian, Mixtec and Spanish.</p>
+      <p>They also share an attitude to the past. None of the three chefs presents tradition as something to be modernised out of. Sorn says Southern food does not need reinventing. Levadura de Olla files its own inventions under a separate heading so they cannot be mistaken for heritage. Hiša Franko uses invention to express a place, and its techniques are borrowed while its materials stay local. In each case the guide's highest recognition is being used to protect a way of eating that the market might otherwise erase.</p>
+      <p>The open question is transparency. The restaurant with the fewest stars publishes the most: every dish, every price, the names of the women who make its tostadas. One of the two three-star restaurants here publishes no dishes at all. For a reader who wants to know what they are eating and where it came from, that gap matters, and it is one this atlas will keep measuring.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="method">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Method and sources</h2>
+    </div>
+    <div class="prose">
+      <h5>Selection</h5>
+      <p>Fifteen restaurants in fifteen countries, chosen for menus that are culturally specific, researchable and documented. The floor is two Michelin stars; three one-star restaurants are kept as exceptions because nothing else in their countries offers the same subject. Michelin publishes no restaurant guide for Africa or India, so Wolfgat (South Africa) and Masque (India) appear as clearly labelled unstarred bonus entries. Saudi Arabia's first guide (2026) awarded no stars, and no Emirati or Qatari kitchen holds one, so the Middle East is represented by Türkiye and by a Syrian kitchen in Dubai.</p>
+      <h5>Verification</h5>
+      <p>Star counts were checked against Michelin's own pages and press releases, national government or tourist-board releases, and national press. Several restaurant-aggregator sites contradicted Michelin on star counts and were not used for status. Menus were taken from restaurants' own websites wherever they exist; the date shown is the file's creation date or the page's last-modified date. Where a restaurant does not publish dishes, the most recent dated account is used and labelled.</p>
+      <h5>Labels</h5>
+      <p>Every factual paragraph carries a label showing its basis: confirmed on the current official menu or site; documented by a dated review or interview; background from history, ecology or culture; or editorial interpretation. Quotations are kept short and attributed. Nothing has been invented to fill a gap; where something could not be confirmed, the text says so.</p>
+      <h5>Status of this edition</h5>
+      <p>Pilot edition, last verified 10 November 2026. Three investigations are complete. Twelve are in preparation and appear as short profiles with verified status and the reason for inclusion. Michelin status changes every year, and several 2027 guides covering restaurants in this atlas are due in the coming weeks.</p>
+      <h5>Map</h5>
+      <p>Map data and tiles © OpenStreetMap contributors, displayed with Leaflet, under the OpenStreetMap tile usage policy. Restaurant positions are taken from published addresses; for restaurants still in preparation they are approximate to street level and will be checked against each address.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>The Michelin Menu Atlas, pilot edition. Independent research; not affiliated with Michelin or any restaurant listed. Menu content reproduced from restaurants' public menus for reference and commentary.</p>
+    <p>Last verified 10 November 2026.</p>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+"use strict";
+/* ---------------- Data ---------------- */
+const R = [
+ {id:"paz",num:"1",name:"PAZ",city:"Tórshavn",country:"Faroe Islands",region:"Northern & Western Europe",lat:62.0105,lng:-6.7745,stars:2,
+  status:"Two stars, entered the Nordic guide in June 2025. The restaurant displays two stars; 2026 confirmation pending on Michelin's site.",guide:"MICHELIN Guide Nordic Countries",
+  chef:"Poul Andrias Ziska",web:"https://paz.fo",themes:["Fermentation","Seafood","Preservation"],done:false,
+  why:"Faroese cooking is built on ræst, the wind-fermentation of mutton and fish in slatted drying sheds, and on skerpikjøt, wind-dried mutton. Reviews record both on PAZ's menu alongside fulmar. Ziska previously earned two stars at KOKS.",
+  coverage:"Denmark, Finland, Iceland, Norway, Sweden, including the Faroe Islands (a self-governing country within the Kingdom of Denmark)",
+  src:[["MICHELIN Guide, Nordic Countries 2025","https://guide.michelin.com/en/article/michelin-guide-ceremony/michelin-guide-nordic-denmark-finland-iceland-norway-sweden-2025-new-green-stars-bib-gourmands-special-awards"],["Visit Faroe Islands","https://visitfaroeislands.com/en/whatson/places/place/paz0"]]},
+ {id:"boa-nova",num:"2",name:"Casa de Chá da Boa Nova",city:"Leça da Palmeira",country:"Portugal",region:"Northern & Western Europe",lat:41.2032,lng:-8.7129,stars:2,
+  status:"Two stars, MICHELIN Guide Portugal 2026 (10 March 2026).",guide:"MICHELIN Guide Portugal",
+  chef:"Rui Paula",web:"https://www.casadechadaboanova.pt",themes:["Seafood","Architecture"],done:false,
+  why:"An Atlantic seafood kitchen inside a 1960s tea house built into the rocks by Álvaro Siza Vieira. A case study in how Portugal's northern coast and its fishing communities are expressed at the top level. Its sommelier won Michelin's 2026 Sommelier Award for Portugal.",
+  coverage:"Mainland Portugal, Madeira and the Azores (own guide since 2024)",
+  src:[["MICHELIN Guide, all starred restaurants in Portugal 2026","https://guide.michelin.com/en/article/michelin-guide-ceremony/All%20MICHELIN-Starred%20Restaurants%20in%20Portugal%202026"]]},
+ {id:"hisa-franko",num:"3",name:"Hiša Franko",city:"Kobarid",country:"Slovenia",region:"Central & Eastern Europe",lat:46.2472,lng:13.5378,stars:3,
+  status:"Three stars, MICHELIN Guide Slovenia 2026 (June 2026).",guide:"MICHELIN Guide Slovenia",
+  chef:"Ana Roš; head chef Yvonne Melee Simon",web:"https://www.hisafranko.com",themes:["Foraging","Dairy & cheese","River fish","Hyperlocal"],done:true,
+  why:"A Soča Valley country house where Alpine dairying, river trout, hay and beeswax become a constantly changing tasting menu.",
+  coverage:"Whole country (since 2020)"},
+ {id:"stand",num:"4",name:"Stand",city:"Budapest",country:"Hungary",region:"Central & Eastern Europe",lat:47.4983,lng:19.0600,stars:2,
+  status:"Two stars, MICHELIN Guide Hungary 2025 selection (9 October 2025), still the current Hungarian selection.",guide:"MICHELIN Guide Hungary",
+  chef:"Tamás Széll and Szabina Szulló",web:"https://www.standrestaurant.hu",themes:["Modernised classics"],done:false,
+  why:"Michelin describes Stand's chef-owners as skilfully reinventing classic Hungarian dishes. The atlas's clearest test of how a canon of familiar national dishes, from paprika stews to layered cakes, is rebuilt at two-star level.",
+  coverage:"Whole country (national guide since 2022; Budapest covered since 2010)",
+  src:[["MICHELIN Guide Hungary 2025","https://guide.michelin.com/en/article/michelin-guide-ceremony/the-michelin-guide-hungary-2025-is-out"],["Trade Magazin, Oct 2025","https://trademagazin.hu/en/oriasi-eredmeny-minden-korabbinal-tobb-michelin-elismeres-a-hazai-ettermeknek-es-szallodaknak"]]},
+ {id:"turk",num:"5",name:"TURK Fatih Tutak",city:"Istanbul",country:"Türkiye",region:"Middle East",lat:41.0592,lng:28.9806,stars:2,
+  status:"Two stars and a Green Star, MICHELIN Guide Türkiye 2026 (4 December 2025).",guide:"MICHELIN Guide Türkiye",
+  chef:"Fatih Tutak",web:"https://turkft.com",themes:["Anatolian heritage","Modernised classics"],done:false,
+  why:"A tasting menu built on Anatolian produce and regional recipes, from a chef who returned to Istanbul in 2019 after working abroad. Türkiye sits between Europe and the Middle East; it is counted here as the Middle Eastern entry alongside Dubai.",
+  coverage:"Istanbul, İzmir, Muğla and Cappadocia; nationwide from 2027",
+  src:[["MICHELIN Guide Türkiye 2026","https://guide.michelin.com/en/article/michelin-guide-ceremony/the-michelin-guide-turkiye-reveals-its-2026-restaurant-selection"],["Hürriyet Daily News","https://hurriyetdailynews.com/michelin-guide-expands-to-cover-entire-turkiye-for-first-time-220627"]]},
+ {id:"orfali",num:"6",name:"Orfali Bros",city:"Dubai",country:"United Arab Emirates",region:"Middle East",lat:25.2236,lng:55.2603,stars:2,
+  status:"Two stars, MICHELIN Guide Dubai 2026 (6 October 2026); promoted from one.",guide:"MICHELIN Guide Dubai",
+  chef:"Mohammad, Wassim and Omar Orfali",web:"https://www.orfalibros.com",themes:["Diaspora","Levantine heritage"],done:false,
+  why:"Three Aleppo-born brothers cooking from their Aleppine, Armenian and Turkish heritage. Michelin calls it a flagship of Middle Eastern gastronomy. It is the atlas's study of a national cuisine carried abroad, since no Emirati, Qatari or Saudi restaurant holds a star.",
+  coverage:"Dubai (fifth edition); Abu Dhabi has a separate guide",
+  src:[["The National, Michelin Guide Dubai 2026","https://www.thenationalnews.com/lifestyle/food/2026/10/07/michelin-guide-dubai-2026-closed-restaurants-retain-stars-as-new-winners-emerge/"],["Michelin press release","https://www.michelin.com/en/publications/products-and-services/the-michelin-guide-dubai-5th-edition"]]},
+ {id:"kwonsooksoo",num:"7",name:"Kwonsooksoo",city:"Seoul",country:"South Korea",region:"East Asia",lat:37.5266,lng:127.0447,stars:2,
+  status:"Two stars, MICHELIN Guide Seoul & Busan 2026 (5 March 2026).",guide:"MICHELIN Guide Seoul & Busan",
+  chef:"Kwon Woo-joong (to be confirmed)",web:"",themes:["Fermentation","Korean heritage"],done:false,
+  why:"The most traditionally Korean of Seoul's two-star kitchens, listed by Michelin under Korean cuisine. Korean cooking rests on fermented pastes and sauces (jang) and kimchi, and this investigation will test how a fine-dining menu handles that inheritance.",
+  coverage:"Seoul and Busan",
+  src:[["MICHELIN Guide, all the stars Seoul & Busan 2026","https://guide.michelin.com/sg/en/article/michelin-guide-ceremony/all-the-stars-michelin-guide-seoul-busan-2026"]]},
+ {id:"tairroir",num:"8",name:"Taïrroir",city:"Taipei",country:"Taiwan",region:"East Asia",lat:25.0806,lng:121.5584,stars:3,
+  status:"Three stars, MICHELIN Guide Taiwan 2026 (July 2026); three stars since 2023.",guide:"MICHELIN Guide Taiwan",
+  chef:"Kai Ho",web:"https://www.tairroir.com",themes:["Island terroir","Modernised classics"],done:false,
+  why:"The first restaurant specialising in Taiwanese cuisine to earn three stars. Its name joins Taiwan and terroir, and its menu reads classic Taiwanese flavours through French technique, a direct way into an island cuisine shaped by Hokkien, Hakka, Japanese and Indigenous layers.",
+  coverage:"Taipei, Taichung, Tainan, Kaohsiung and further cities",
+  src:[["Michelin press release, Taiwan 2026","https://www.michelin.com/en/publications/products-and-services/the-michelin-guide-taiwan"],["TaiwanPlus","https://www.taiwanplus.com/news/news-shows/zoom-in-zoom-out/240226016/the-worlds-first-michelin-3-star-taiwanese-restaurant"]]},
+ {id:"sorn",num:"9",name:"Sorn",city:"Bangkok",country:"Thailand",region:"Southeast Asia",lat:13.7265,lng:100.5692,stars:3,
+  status:"Three stars, MICHELIN Guide Thailand 2026.",guide:"MICHELIN Guide Thailand",
+  chef:"Supaksorn “Ice” Jongsiri; head chef Yodkwan U-Pumpruk",web:"https://sornfinesouthern.com",themes:["Fermentation","Seafood","Regional identity","Fire & charcoal"],done:true,
+  why:"Southern Thai cooking from fourteen provinces, at full heat, with a published menu that reads like a map of the peninsula.",
+  coverage:"Bangkok, Chiang Mai, Phuket, Phang-nga and other provinces"},
+ {id:"dewakan",num:"10",name:"Dewakan",city:"Kuala Lumpur",country:"Malaysia",region:"Southeast Asia",lat:3.1590,lng:101.7183,stars:2,
+  status:"Two stars and a Green Star, MICHELIN Guide Kuala Lumpur & Penang 2026 (11 November 2025).",guide:"MICHELIN Guide Kuala Lumpur & Penang",
+  chef:"Darren Teoh",web:"https://www.dewakan.my",themes:["Foraging","Indigenous ingredients"],done:false,
+  why:"Malaysia's only two-star restaurant, often called its first progressive Malaysian kitchen. Expected to be the richest source of little-known ingredients for the index, from Bornean produce to peninsular forest plants. A 2027 Malaysian guide is due imminently.",
+  coverage:"Kuala Lumpur and Penang",
+  src:[["Malay Mail, Michelin Guide KL & Penang 2026","https://malaymail.com/news/eat-drink/2025/11/11/michelin-guide-kuala-lumpur-and-penang-2026-new-entrants-akar-and-terra-dining-lauded-with-one-michelin-stars/198035"]]},
+ {id:"levadura",num:"11",name:"Levadura de Olla",city:"Oaxaca de Juárez",country:"Mexico",region:"North America",lat:17.064314,lng:-96.727597,stars:1,exception:true,
+  status:"One star, MICHELIN Guide Mexico 2026 (May 2026). Kept as an editorial exception.",guide:"MICHELIN Guide Mexico",
+  chef:"Thalía Barrios García",web:"https://levaduradeolla.mx",themes:["Indigenous ingredients","Regional identity","Maize"],done:true,
+  why:"Village cooking from the Sierra Sur of Oaxaca, arranged by the social role of each dish, with every grower and drink-maker named.",
+  coverage:"Mexico City, Oaxaca, Baja California, Nuevo León, Quintana Roo, Los Cabos; Jalisco, Puebla and Yucatán added in 2026"},
+ {id:"emerils",num:"12",name:"Emeril's",city:"New Orleans",country:"United States",region:"North America",lat:29.9447,lng:-90.0677,stars:2,
+  status:"Two stars, MICHELIN Guide American South 2026 (October 2026); the region's only two-star restaurant.",guide:"MICHELIN Guide American South",
+  chef:"E.J. Lagasse",web:"https://theemerilgroup.com",themes:["Creole heritage","Modernised classics"],done:false,
+  why:"Emeril Lagasse's 1990 flagship, reworked by his son into a Creole tasting menu. The atlas's study of a living American regional cuisine shaped by French, Spanish, West African and Caribbean influences.",
+  coverage:"Alabama, Louisiana, Mississippi, North and South Carolina, Tennessee and Atlanta",
+  src:[["New Orleans & Company, Michelin Guide 2026","https://www.neworleans.com/restaurants/where-to-eat/michelin-guide-new-orleans/"]]},
+ {id:"dom",num:"13",name:"D.O.M.",city:"São Paulo",country:"Brazil",region:"South America",lat:-23.5666,lng:-46.6671,stars:2,
+  status:"Two stars, MICHELIN Guide Rio de Janeiro & São Paulo 2026 (13 April 2026); held two stars since the guide's Brazilian debut in 2015.",guide:"MICHELIN Guide Rio de Janeiro & São Paulo",
+  chef:"Alex Atala",web:"https://domrestaurante.com.br",themes:["Indigenous ingredients","Amazonian produce"],done:false,
+  why:"The restaurant that put Amazonian ingredients on Brazil's fine-dining map. Its bar chef won Brazil's first Michelin Exceptional Cocktail Award in 2026.",
+  coverage:"Rio de Janeiro and São Paulo",
+  src:[["Michelin press release, Rio & São Paulo 2026","https://www.michelin.com/en/publications/products-and-services/the-new-michelin-guide-rio-de-janeiro-sao-paulo-2026"]]},
+ {id:"don-julio",num:"14",name:"Don Julio",city:"Buenos Aires",country:"Argentina",region:"South America",lat:-34.5862,lng:-58.4234,stars:1,exception:true,
+  status:"One star, MICHELIN Guide Buenos Aires & Mendoza 2026 (13 July 2026). Kept as an editorial exception.",guide:"MICHELIN Guide Buenos Aires & Mendoza",
+  chef:"Pablo Rivero (owner); Guido Tassi (chef)",web:"https://www.parrilladonjulio.com",themes:["Fire & charcoal","Regional identity"],done:false,
+  why:"A neighbourhood parrilla with its own butchery and farms, and the only entry with a traditional à la carte menu. The natural way into asado, Argentina's defining food ritual.",
+  coverage:"Buenos Aires and Mendoza",
+  src:[["Forbes Argentina, Guía Michelin 2026","https://www.forbesargentina.com/lifestyle/guia-michelin-2026-uno-uno-14-restaurantes-argentinos-estrellas-michelin-n93727"]]},
+ {id:"tala",num:"15",name:"Tala",city:"Auckland",country:"New Zealand",region:"Oceania",lat:-36.8568,lng:174.7790,stars:1,exception:true,
+  status:"One star, MICHELIN Guide New Zealand 2026 (30 June 2026). Kept as an editorial exception.",guide:"MICHELIN Guide New Zealand",
+  chef:"Henry Onesemo",web:"https://www.tala.co.nz",themes:["Pacific heritage","Diaspora"],done:false,
+  why:"The world's only restaurant dedicated to modern Samoan food, and the first Samoan restaurant to win a star. Auckland is home to one of the largest Pacific populations of any city, and Tala's 14-dish menu includes panikeke, pani popo and umu chicken.",
+  coverage:"Auckland, Wellington, Christchurch, Queenstown (first edition)",
+  src:[["Parnell Business Association","https://www.parnell.net.nz/tala-makes-history-with-michelin-star-for-samoan-food/"],["1News","https://www.1news.co.nz/2026/07/01/how-much-does-it-cost-to-eat-at-new-zealands-michelin-restaurants/"]]},
+ {id:"wolfgat",num:"B1",name:"Wolfgat",city:"Paternoster",country:"South Africa",region:"Africa",lat:-32.8095,lng:17.8928,stars:0,bonus:true,
+  status:"Unstarred bonus entry. Michelin publishes no restaurant guide in Africa.",guide:"None",
+  chef:"Kobus van der Merwe",web:"https://www.wolfgat.co.za",themes:["Foraging","Seafood","Indigenous ingredients"],done:false,
+  why:"A 20-seat restaurant in a fisherman's cottage on the West Coast, cooking from the Saldanha Strandveld fynbos and the Atlantic shore. Named Restaurant of the Year at the World Restaurant Awards in 2019.",
+  coverage:"No Michelin restaurant guide; Michelin Keys for hotels only",
+  src:[["News24 / Eat Out (2026)","https://www.news24.com/eat-out/partners/wolfgat-a-destination-restaurant-that-celebrates-paternosters-coastal-beauty-20260605-0831"]]},
+ {id:"masque",num:"B2",name:"Masque",city:"Mumbai",country:"India",region:"South Asia",lat:18.9843,lng:72.8238,stars:0,bonus:true,
+  status:"Unstarred bonus entry. Michelin publishes no guide in India.",guide:"None",
+  chef:"Varun Totlani; founder Aditi Dugar",web:"https://www.masquerestaurant.com",themes:["Foraging","Regional identity"],done:false,
+  why:"India's first tasting-menu-only restaurant, in a former Mahalaxmi textile mill, ranked No. 15 in Asia's 50 Best Restaurants 2026. Its team forages and sources from farmers as far apart as Goa and Kashmir.",
+  coverage:"No Michelin guide",
+  src:[["The World's 50 Best, Asia 2026","https://www.theworlds50best.com/asia/en/the-list/11-20/masque.html"],["Tatler Asia","https://www.tatlerasia.com/dining/food/a-decade-of-masque-and-the-mumbai-restaurant-that-changed-how-india-eats-out"]]}
+];
+
+const INGR = [
+ {n:"Budu",r:"sorn",o:"Pattani, Yala and Narathiwat (Thailand); Kelantan and Terengganu (Malaysia)",
+  what:"A fermented fish sauce made by salting small fish, usually anchovy, and leaving them for months until they break down into a thick, brown, sweet-salty liquid.",
+  trad:"The essential dressing of khao yam (nasi kerabu) and a base for chilli relishes in Malay Muslim households.",
+  use:"Sorn sweetens it with palm sugar and deepens it with shrimp paste to dress The Sea Holds the Forest.",
+  why:"It tastes of a specific community and border, and is rounder and more pungent than the fish sauce of central Thailand."},
+ {n:"Tapi River prawn",r:"sorn",o:"Tapi River, Surat Thani province, draining into the Gulf of Thailand",
+  what:"Freshwater prawns from the Tapi, the river that drains Surat Thani province into the Gulf.",
+  trad:"Grilled whole at riverside restaurants; the fat in the head is prized.",
+  use:"The first line of Sorn's Classic Menu: prawn, jasmine rice, sago cracker and prawn fat.",
+  why:"Naming a river on a menu's first line works the way a vineyard name works on a wine label."},
+ {n:"Blue swimmer crab",r:"sorn",o:"Gulf of Thailand and Andaman Sea; Sorn's crabs come from Surat Thani",
+  what:"A sweet-fleshed crab whose roe-bearing females are especially valued.",
+  trad:"Steamed and eaten with a pounded chilli dip; the leg meat is the most fought-over part.",
+  use:"Crab Stick: leg meat coated in mud crab roe and set in a granite mortar of chilli paste.",
+  why:"It shows how Thai coastal snacking becomes a signature course without changing its flavour."},
+ {n:"Sataw (stink bean)",r:"sorn",o:"Peninsular Southeast Asia (Parkia speciosa)",
+  what:"Bright green beans from a tall rainforest tree, eaten from long twisted pods, with a strong sulphurous smell and bitter edge.",
+  trad:"Stir-fried with shrimp paste and chilli, or eaten raw beside curry, throughout the South.",
+  use:"A side dish with redtail catfish and Southern curry paste on the Classic Menu; with beef and squid ink on the Seasonal Menu.",
+  why:"Few ingredients divide Thais and visitors so sharply. Southerners treat it as a delicacy."},
+ {n:"Melinjo leaf (bai liang)",r:"sorn",o:"Tropical Southeast Asia (Gnetum gnemon)",
+  what:"Tender young leaves of the melinjo tree, whose seeds are used in Indonesia for emping crackers.",
+  trad:"A Southern Thai green, simmered in coconut milk or stir-fried with egg.",
+  use:"Simmered in coconut milk with coconut meat, dried shrimp and squid, as a cooling course after the crab.",
+  why:"An everyday market green that most visitors to Thailand never meet."},
+ {n:"Torch ginger",r:"sorn",o:"Malay peninsula and Indonesia (Etlingera elatior)",
+  what:"The pink flower bud of a tall ginger plant, floral and sour.",
+  trad:"Shredded raw into khao yam and Malay herb salads.",
+  use:"One of the Southern herbs tossed through Sorn's khao yam.",
+  why:"It shows how much of Southern Thai flavour comes from flowers and leaves as well as chilli."},
+ {n:"Black glutinous rice",r:"sorn",o:"Grown across Southeast Asia",
+  what:"Whole-grain sticky rice whose bran turns it deep purple when cooked.",
+  trad:"Cooked to a porridge with salted coconut milk: bee-go-moi in Phuket and bee koh moy in Penang.",
+  use:"Bi Co Moi: black sticky rice with young coconut ice cream and cashew.",
+  why:"Its Hokkien name records Phuket's Chinese community, which arrived with tin mining."},
+ {n:"Tolminc",r:"hisa-franko",o:"Upper Soča Valley and the Julian Alps around Tolmin, Slovenia",
+  what:"A hard cow's-milk cheese with an EU protected designation of origin (2012).",
+  trad:"Made in summer dairies on mountain pastures so that milk could survive the trip down; eaten young or aged.",
+  use:"Fills the brioches that open the Euphorest menu; aged in-house and used almost as a seasoning.",
+  why:"Mountain dairies that make it have fallen from 68 in the 1930s to fewer than 20."},
+ {n:"Skuta",r:"hisa-franko",o:"Slovenia and the wider Alpine–Adriatic region",
+  what:"A soft, fresh cheese made from whey left over from hard-cheese making, similar to ricotta.",
+  trad:"A thrifty by-product of the dairy, eaten fresh or in pastries.",
+  use:"Smoked, in a cream puff with trout roe; also with nettles and walnuts in a butterfly pasta.",
+  why:"It shows a dairy culture that wastes nothing."},
+ {n:"Soča trout",r:"hisa-franko",o:"Soča (Isonzo) river basin; the native species is the marble trout, Salmo marmoratus",
+  what:"River trout from the Soča system. The native marble trout survived in pure form only in remote headwater streams after decades of stocking with brown trout.",
+  trad:"Grilled or pan-fried in valley inns; fly fishing drives local tourism.",
+  use:"Trota la regina: trout from a stream-fed tank, aged two days and grilled.",
+  why:"The species actually served is not confirmed, which makes it the open question of the menu."},
+ {n:"Beeswax",r:"hisa-franko",o:"Slovenia, from the native Carniolan honeybee",
+  what:"The wax of the comb, which carries the aroma of honey and resin without its sweetness.",
+  trad:"Candles, polish and the painted hive panels of Slovenian folk art; honey for gingerbread.",
+  use:"Infused into the final dessert, an ice cream with poppy-seed sauce.",
+  why:"Slovenia allows only the native Carniolan bee and proposed World Bee Day to the UN."},
+ {n:"Chanterelle",r:"hisa-franko",o:"Beech and conifer forests of the Julian Alps",
+  what:"An apricot-scented wild mushroom of summer and autumn.",
+  trad:"Gathered by families and cooked with eggs or barley.",
+  use:"In the toasted barley “risotto”, gathered by the restaurant's forager.",
+  why:"A reminder that the forest supplies much of this menu."},
+ {n:"Barley (ješprenj)",r:"hisa-franko",o:"Grown across Slovenia",
+  what:"Pearl barley, the everyday grain of Slovenian peasant cooking.",
+  trad:"Ričet, a stew of barley, beans and smoked pork.",
+  use:"Toasted and creamed like risotto, because rice is not grown in Slovenia.",
+  why:"It shows the kitchen's rule of substituting local for imported."},
+ {n:"Istrian black truffle",r:"hisa-franko",o:"Istrian peninsula, shared by Slovenia and Croatia",
+  what:"Black truffles from the oak and hazel woods of Istria, which also yield white truffles.",
+  trad:"Shaved over pasta and eggs in Istrian inns.",
+  use:"Finishes the barley risotto.",
+  why:"It ties an Alpine valley's menu to Slovenia's short Mediterranean coast."},
+ {n:"Drežnica goat",r:"hisa-franko",o:"Drežnica, a village above Kobarid",
+  what:"A local goat breed the restaurant describes as protected.",
+  trad:"Kept on steep pastures for milk and meat.",
+  use:"Named on the official site as a supplier relationship; not on the documented autumn 2026 menu, which served roe deer.",
+  why:"A breed kept alive partly because a restaurant buys it."},
+ {n:"Quelites",r:"levadura",o:"Mexico; around 250 species are eaten",
+  what:"Edible wild and semi-wild greens, stems and flowers that grow in and around the milpa.",
+  trad:"Soups, quesadillas, tamales and stews, picked for a few weeks each season.",
+  use:"A whole soup of quelites thickened with corn; Mixteca quelites with the guava mole; scattered over the native tomatoes.",
+  why:"Consumption is declining as commercial vegetables replace them, and restaurants have become part of their defence."},
+ {n:"Hoja santa",r:"levadura",o:"Southern Mexico (Piper auritum)",
+  what:"A broad, velvety leaf with a scent of anise and sassafras.",
+  trad:"Wrapped round fish and cheese, stewed into moles, used to cook eggs on the comal.",
+  use:"Cooked with the dried pozole of the mole de fiesta and with the mountain mushroom tacos.",
+  why:"Its aroma is one of the signatures of Oaxacan cooking."},
+ {n:"Avocado leaf",r:"levadura",o:"Native Mexican avocado trees",
+  what:"Leaves of criollo avocado trees, with an anise-like perfume when toasted.",
+  trad:"Seasoning for beans, barbacoa and tamales.",
+  use:"In the adobo of the barbacollita tamal, and in the bean paste under the confit pork rib.",
+  why:"Cooks prefer the leaves of native criollo trees for their scent; it is an aromatic that rarely appears outside Mexico."},
+ {n:"Chapulines",r:"levadura",o:"Central Valleys of Oaxaca",
+  what:"Grasshoppers, usually toasted with garlic, lime, chilli and salt.",
+  trad:"A market snack and taco filling across Oaxaca, harvested from the fields.",
+  use:"Made into a salsa for the tasajo taco.",
+  why:"A protein source with deep roots, now attracting interest as sustainable food."},
+ {n:"Chile de agua",r:"levadura",o:"Central Valleys of Oaxaca",
+  what:"A pale green to red fresh chilli, long and pointed, eaten charred or stuffed.",
+  trad:"Roasted and peeled for salsas and rajas.",
+  use:"With the Sierra potato in the tasajo taco.",
+  why:"One of many chillies found almost nowhere outside Oaxaca."},
+ {n:"Native tomatoes",r:"levadura",o:"Mesoamerica, where the tomato was domesticated",
+  what:"Landrace tomatoes in many shapes and colours, grown in Oaxacan fields.",
+  trad:"Salsas, broths and moles; the word itself comes from Nahuatl tomatl.",
+  use:"A signature plate on beetroot purée with fruit vinaigrette; displayed in a “tomato room”.",
+  why:"It returns a global ingredient to its origin and shows the diversity behind it."},
+ {n:"Cacayas (agave flowers)",r:"levadura",o:"Oaxaca and central Mexico",
+  what:"The flower buds of the maguey, harvested briefly in season.",
+  trad:"Cooked with onion and chilli or in eggs.",
+  use:"Sautéed with onion and red jalapeño beside Pacific fish in red pipián.",
+  why:"The same plant gives mezcal, pulque, fibre and food."},
+ {n:"Maize landraces",r:"levadura",o:"San Mateo Yucutindoó; the restaurant names magueyano, olotón and tatanano",
+  what:"Locally adapted maize varieties grown in rain-fed milpas.",
+  trad:"Tortillas, tostadas, tamales, atoles, pozole and dessert.",
+  use:"Blue-maize tostadas from Señora Sixta Sarmiento; cracked maize in tamales; maize in nicuatole and corn water.",
+  why:"Mexico is maize's homeland, and each landrace is a living record of a community's farming."},
+ {n:"Papalometl agave",r:"levadura",o:"Mixteca region (Agave potatorum)",
+  what:"A small wild agave, best known for tobalá and papalometl mezcals.",
+  trad:"Distilled to mezcal; in the Mixteca the heart is also pressed for a drink.",
+  use:"Ticunchi, a pink juice of the agave heart with coyul clover quelite, credited to Hermilo Ayala Coronel.",
+  why:"An unfermented use of a plant the world knows only as a spirit."}
+];
+
+const TECH = [
+ {n:"Pounding in pestle and mortar",w:"Sorn · Levadura de Olla",o:"Southeast Asia; Mesoamerica (the molcajete)",
+  t:"Crushing aromatics, chillies and seeds against stone. It releases oils and makes a coarse paste with texture that a blender's blades cannot match. Sorn pounds its chilli pastes in-house and uses three different pounding methods so the crab paste holds without stabilisers. Levadura de Olla lists river-stone molcajetes among its tools."},
+ {n:"Charcoal and clay-pot rice",w:"Sorn",o:"Thailand",
+  t:"Rice steamed in a clay pot over charcoal, which gives gentle, even heat and a faint smoky note. Sorn uses mineral water from Ranong and has said its charcoal comes from the South."},
+ {n:"Fish fermentation",w:"Sorn",o:"Southeast Asia",
+  t:"Salting small fish and letting enzymes and microbes break them down over months. It preserves a seasonal catch and creates deep savoury flavour. Budu, fish sauce and shrimp paste all appear on Sorn's menu."},
+ {n:"Sun-drying and frying rice",w:"Sorn",o:"Southern Thailand",
+  t:"Turmeric-steamed rice dried in the sun and fried in coconut oil until crisp, so the rice salad has crunch as well as flavour."},
+ {n:"Cooking in hay",w:"Hiša Franko",o:"Alpine Europe",
+  t:"Food is baked or smoked surrounded by dried hay, which perfumes it with meadow grass and flowers. Hiša Franko bakes small potatoes in a hay crust and infuses a tomato water with hay for its non-alcoholic pairing."},
+ {n:"Dry-ageing fish",w:"Hiša Franko",o:"Contemporary seafood kitchens",
+  t:"Holding fish under controlled cold for days so it loses surface moisture, firms and concentrates in flavour. Hiša Franko ages its trout for two days before grilling, which is rare for a freshwater fish."},
+ {n:"Cheese ageing",w:"Hiša Franko",o:"Alpine dairying",
+  t:"Turning and storing wheels so that flavour and texture develop over months. The restaurant ages the local Tolminc and uses different ages in different dishes."},
+ {n:"Wax infusion",w:"Hiša Franko",o:"Contemporary pastry, built on Slovenian beekeeping",
+  t:"Warming beeswax in cream or milk so its aromatic compounds dissolve into the fat, then removing the wax. The result tastes of the hive without honey's sweetness."},
+ {n:"Comal cooking",w:"Levadura de Olla",o:"Mesoamerica",
+  t:"Cooking on a flat clay or metal griddle over fire: tortillas, toasting seeds and chillies, popping maize and sorghum for a drink, reheating tamales the day after a fiesta."},
+ {n:"Charring (tatemado)",w:"Levadura de Olla",o:"Mexico",
+  t:"Blackening chillies, tomatoes and onions on the comal or in embers before grinding, for smoky, bitter-sweet depth. Used in the red pipián served with Pacific fish."},
+ {n:"Thickening with maize",w:"Levadura de Olla",o:"Mexico",
+  t:"Using masa or cracked maize to body a sauce. The village mole de fiesta is thickened with masa instead of the seeds, nuts and bread used in Central Valley moles."},
+ {n:"Tamal-making in the San Mateo style",w:"Levadura de Olla",o:"Sierra Sur of Oaxaca",
+  t:"Cutting the base off dried corn husks and soaking them so they soften and lose their small prickles, then spreading the dough in a thin layer before filling and steaming."},
+ {n:"Fermenting drinks",w:"Levadura de Olla · Hiša Franko",o:"Mexico; contemporary European kitchens",
+  t:"Pulque from agave sap, taberna from coyul palm sap, tepache from fruit, and at Hiša Franko kombucha and house ferments for the non-alcoholic pairing. Fermentation preserves and transforms seasonal sugars."}
+];
+
+/* ---------------- Helpers ---------------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const starStr = n => n>0 ? "★".repeat(n) : "Unstarred";
+const anchor = r => "#r-" + r.id;
+const regions = [...new Set(R.map(r => r.region))];
+const themes = [...new Set(R.flatMap(r => r.themes))].sort();
+const byId = Object.fromEntries(R.map(r => [r.id, r]));
+
+/* ---------------- Map ---------------- */
+let map, markers = {};
+function initMap(){
+  if (typeof L === "undefined") { $("#map").innerHTML = '<p style="padding:2rem;color:#123B37;font-family:var(--sans)">The map could not load. The list beside it still links to every investigation.</p>'; return; }
+  map = L.map("map", {worldCopyJump:true, scrollWheelZoom:false, minZoom:2}).setView([20, 20], 2);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom:18
+  }).addTo(map);
+  R.forEach(r => {
+    const cls = r.bonus ? "bonus" : (r.done ? "done" : "soon");
+    const icon = L.divIcon({className:"", html:`<div class="pin ${cls}">${esc(r.num)}</div>`, iconSize:[26,26], iconAnchor:[13,13], popupAnchor:[0,-12]});
+    const link = r.done ? `<a href="${anchor(r)}">Read the investigation</a>` : `<a href="${anchor(r)}">See the profile</a> (investigation in preparation)`;
+    const m = L.marker([r.lat, r.lng], {icon, title:r.name, keyboard:true}).addTo(map)
+      .bindPopup(`<div class="pop"><h3>${esc(r.name)}</h3><div class="meta">${esc(r.city)}, ${esc(r.country)} · <span class="stars">${starStr(r.stars)}</span></div><p style="margin:.2rem 0 .5rem">${esc(r.why)}</p>${link}</div>`, {maxWidth:300});
+    markers[r.id] = m;
+  });
+  const b = L.latLngBounds(R.map(r => [r.lat, r.lng]));
+  map.fitBounds(b, {padding:[30,30]});
+  map.on("focus", () => map.scrollWheelZoom.enable());
+  map.on("blur", () => map.scrollWheelZoom.disable());
+}
+function buildMapList(){
+  $("#maplist").innerHTML = R.map(r => `<li><button type="button" data-id="${r.id}"><span class="n">${esc(r.num)}</span><span>${esc(r.name)}<br><span class="c">${esc(r.city)}, ${esc(r.country)}</span></span><span class="c" style="color:var(--turmeric)">${r.stars?"★".repeat(r.stars):"—"}</span></button></li>`).join("");
+  $("#maplist").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b || !map) return;
+    const r = byId[b.dataset.id];
+    map.flyTo([r.lat, r.lng], 6, {duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1.2});
+    markers[r.id].openPopup();
+  });
+}
+
+/* ---------------- Collection ---------------- */
+function buildFilters(){
+  regions.forEach(g => $("#fRegion").insertAdjacentHTML("beforeend", `<option>${esc(g)}</option>`));
+  themes.forEach(t => $("#fTheme").insertAdjacentHTML("beforeend", `<option>${esc(t)}</option>`));
+  ["#q","#fRegion","#fStars","#fTheme","#fStatus"].forEach(s => $(s).addEventListener("input", renderCollection));
+  $("#reset").addEventListener("click", () => { ["#q","#fRegion","#fStars","#fTheme","#fStatus"].forEach(s => $(s).value = ""); renderCollection(); });
+}
+function renderCollection(){
+  const q = $("#q").value.trim().toLowerCase(), rg = $("#fRegion").value, st = $("#fStars").value, th = $("#fTheme").value, ss = $("#fStatus").value;
+  const ingrText = id => INGR.filter(i => i.r === id).map(i => i.n + " " + i.what).join(" ");
+  const rows = R.filter(r => {
+    if (rg && r.region !== rg) return false;
+    if (st !== "" && String(r.stars) !== st) return false;
+    if (th && !r.themes.includes(th)) return false;
+    if (ss === "done" && !r.done) return false;
+    if (ss === "soon" && r.done) return false;
+    if (q) {
+      const art = document.getElementById("r-" + r.id);
+      const hay = [r.name, r.city, r.country, r.region, r.chef, r.why, r.themes.join(" "), ingrText(r.id), r.done && art ? art.textContent : ""].join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  let html = "", last = "";
+  rows.forEach(r => {
+    if (r.region !== last) { html += `<tr class="region-h"><td colspan="7">${esc(r.region)}</td></tr>`; last = r.region; }
+    html += `<tr><td class="num">${esc(r.num)}</td><td class="nm"><a href="${anchor(r)}">${esc(r.name)}</a>${r.exception?' <span class="tag">exception</span>':''}${r.bonus?' <span class="tag">bonus</span>':''}</td><td>${esc(r.city)}<br><span style="color:var(--ink-soft)">${esc(r.country)}</span></td><td class="st">${r.stars?"★".repeat(r.stars):'<span style="color:var(--ink-soft)">none</span>'}</td><td class="hide-s">${esc(r.chef)}</td><td class="hide-s">${esc(r.why)}<div style="margin-top:.35rem">${r.themes.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div></td><td>${r.done?'<span class="status-done">Published</span>':'<span class="status-soon">In preparation</span>'}</td></tr>`;
+  });
+  $("#collbody").innerHTML = html || `<tr><td colspan="7">No restaurant matches these filters. Clear a filter or try a broader word.</td></tr>`;
+  $("#count").textContent = `${rows.length} of ${R.length} shown`;
+}
+function buildCountryTable(){
+  let html = "", last = "";
+  R.forEach(r => {
+    html += `<tr><td>${r.region !== last ? esc(r.region) : ""}</td><td>${esc(r.country)}</td><td>${esc(r.city)}</td><td>${esc(r.guide)}</td><td>${esc(r.coverage)}</td></tr>`;
+    last = r.region;
+  });
+  $("#countrybody").innerHTML = html;
+}
+
+/* ---------------- Investigations: order and stubs ---------------- */
+function buildInvestigations(){
+  const list = $("#inv-list");
+  R.forEach(r => {
+    let el = document.getElementById("r-" + r.id);
+    if (!el) {
+      el = document.createElement("article");
+      el.className = "inv stub"; el.id = "r-" + r.id;
+      const web = r.web ? `<a href="${esc(r.web)}">${esc(r.web.replace(/^https?:\/\//,""))}</a>` : "Not yet verified";
+      el.innerHTML = `<div class="inv-top"><div class="inv-num" aria-hidden="true">${esc(r.num)}</div><div><h3>${esc(r.name)}</h3><p class="where">${esc(r.city)} · ${esc(r.country)}</p></div></div>
+      <dl class="facts"><div><dt>Michelin status</dt><dd>${r.stars?'<span class="st">'+"★".repeat(r.stars)+'</span> ':''}${esc(r.status)}</dd></div><div><dt>Leadership</dt><dd>${esc(r.chef)}</dd></div><div><dt>Website</dt><dd>${web}</dd></div></dl>
+      <div class="prose"><p><span class="ev ev-e">Why it is here</span>${esc(r.why)}</p></div>
+      <p class="pending">Full investigation in preparation: national context, the current menu reproduced in full, five dishes read closely, producers and sources. Status sources: ${(r.src||[]).map(s=>`<a href="${esc(s[1])}">${esc(s[0])}</a>`).join("; ")}.</p>`;
+    }
+    list.appendChild(el);
+  });
+  $("#invnav").innerHTML = R.map(r => `<li><a href="${anchor(r)}" class="${r.done?"done":""}"><span class="n">${esc(r.num)}</span><span>${esc(r.name)}${r.done?"":' <span style="opacity:.6">(soon)</span>'}</span></a></li>`).join("");
+}
+
+/* ---------------- Ingredient and technique indexes ---------------- */
+function buildIngredients(){
+  const used = [...new Set(INGR.map(i => i.r))];
+  used.forEach(id => $("#ir").insertAdjacentHTML("beforeend", `<option value="${id}">${esc(byId[id].name)}</option>`));
+  const render = () => {
+    const q = $("#iq").value.trim().toLowerCase(), f = $("#ir").value;
+    const rows = INGR.filter(i => (!f || i.r === f) && (!q || Object.values(i).join(" ").toLowerCase().includes(q)));
+    $("#ingrlist").innerHTML = rows.map(i => `<details><summary><b>${esc(i.n)}</b><i>${esc(byId[i.r].name)}</i></summary><dl>
+      <dt>What it is</dt><dd>${esc(i.what)}</dd><dt>Where it comes from</dt><dd>${esc(i.o)}</dd><dt>Traditional use</dt><dd>${esc(i.trad)}</dd>
+      <dt>How the chef uses it</dt><dd>${esc(i.use)} <a href="${anchor(byId[i.r])}">Go to ${esc(byId[i.r].name)}</a></dd><dt>Why it is interesting</dt><dd>${esc(i.why)}</dd></dl></details>`).join("") || `<p>No ingredient matches. Try a broader word.</p>`;
+    $("#icount").textContent = `${rows.length} of ${INGR.length} ingredients`;
+  };
+  $("#iq").addEventListener("input", render); $("#ir").addEventListener("input", render); render();
+}
+function buildTechniques(){
+  $("#techlist").innerHTML = TECH.map(t => `<details><summary><b>${esc(t.n)}</b><span>${esc(t.w)}<br>Origin: ${esc(t.o)}</span></summary><div class="tb"><p>${esc(t.t)}</p></div></details>`).join("");
+}
+
+/* ---------------- Nav highlight ---------------- */
+function navSpy(){
+  const links = [...document.querySelectorAll(".mast nav a")];
+  const secs = links.map(a => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) links.forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + e.target.id));
+  }), {rootMargin:"-45% 0px -50% 0px"});
+  secs.forEach(s => io.observe(s));
+}
+
+buildInvestigations();
+buildMapList();
+buildFilters();
+renderCollection();
+buildCountryTable();
+buildIngredients();
+buildTechniques();
+initMap();
+navSpy();
+/* re-apply a deep link once fonts and generated content have settled */
+if (location.hash) {
+  const go = () => { const t = document.getElementById(decodeURIComponent(location.hash.slice(1))); if (t) t.scrollIntoView({behavior:"auto"}); };
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(go, 50));
+}
+</script>
+</body>
+</html>
